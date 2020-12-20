@@ -11,45 +11,50 @@ data Expr
   | Num Int
   deriving (Show)
 
-parse :: [Syntax] -> (Maybe Expr, [Syntax])
-parse input = parseExpr $ filter notSpace input
+type Precedence = Int
+
+getBinaryOpPrecedence :: Syntax -> Precedence
+getBinaryOpPrecedence Mul = 2
+getBinaryOpPrecedence Div = 2
+getBinaryOpPrecedence Add = 1
+getBinaryOpPrecedence Sub = 1
+getBinaryOpPrecedence _ = 0
+
+buildBinaryExpr :: Syntax -> Expr -> Expr -> Expr
+buildBinaryExpr Add = AddOp
+buildBinaryExpr Sub = SubOp
+buildBinaryExpr Mul = MulOp
+buildBinaryExpr Div = DivOp
+
+parse :: [Syntax] -> (Expr, [Syntax])
+parse input = tryRestart $ parseExpr (filter notSpace input) 0
   where
-    parseExpr :: [Syntax] -> (Maybe Expr, [Syntax])
-    parseExpr xs = parseTerm Nothing xs
+    tryRestart :: (Expr, [Syntax]) -> (Expr, [Syntax])
+    tryRestart (l, []) = (l, [])
+    tryRestart (l, op : tail) = case parseExpr tail 0 of
+      (r, rst) -> tryRestart (buildBinaryExpr op l r, rst)
 
-    parseTerm :: Maybe Expr -> [Syntax] -> (Maybe Expr, [Syntax])
-    parseTerm Nothing xs =
-      case parseFactor Nothing xs of
-        (val@(Just _), tail) -> parseTerm val tail
-    parseTerm (Just e) xs@(Add : tail) =
-      case parseFactor Nothing tail of
-        (Just num, rst) -> parseTerm (Just $ AddOp e num) rst
-    parseTerm (Just e) xs@(Sub : tail) =
-      case parseFactor Nothing tail of
-        (Just num, rst) -> parseTerm (Just $ SubOp e num) rst
-    parseTerm val@(Just _) xs = (val, xs)
-
-    parseFactor :: Maybe Expr -> [Syntax] -> (Maybe Expr, [Syntax])
-    parseFactor Nothing xs =
+    parseExpr :: [Syntax] -> Precedence -> (Expr, [Syntax])
+    parseExpr xs p =
       case parsePth xs of
-        (val@(Just _), tail) -> parseFactor val tail
-    parseFactor (Just e) xs@(Mul : tail) =
-      case parsePth tail of
-        (Just num, rst) -> parseFactor (Just $ MulOp e num) rst
-    parseFactor (Just e) xs@(Div : tail) =
-      case parsePth tail of
-        (Just num, rst) -> parseFactor (Just $ DivOp e num) rst
-    parseFactor val@(Just _) xs = (val, xs)
+        (l, []) -> (l, [])
+        (l, ys@(op : tail)) ->
+          let precedence = getBinaryOpPrecedence op
+           in if precedence > p
+                then case parseExpr tail precedence of
+                  (r, rst) -> (buildBinaryExpr op l r, rst)
+                else (l, ys)
 
-    parsePth :: [Syntax] -> (Maybe Expr, [Syntax])
+    parsePth :: [Syntax] -> (Expr, [Syntax])
     parsePth (OpenPth : tail) =
-      case parseExpr tail of
-        (Just e, ClosePth : rst) -> (Just $ Pth e, rst)
+      case parseExpr tail 0 of
+        (e, ClosePth : rst) -> (Pth e, rst)
     parsePth xs = parseNum xs
 
-    parseNum :: [Syntax] -> (Maybe Expr, [Syntax])
-    parseNum ((I i) : tail) = (Just $ Num i, tail)
-    parseNum xs = (Nothing, xs)
+    parseNum :: [Syntax] -> (Expr, [Syntax])
+    parseNum ((I i) : tail) = (Num i, tail)
+    parseNum [] = error "Error empty token"
+    parseNum (h : tail) = error $ "Error syntax at " <> show h
 
     notSpace :: Syntax -> Bool
     notSpace Space = False

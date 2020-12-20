@@ -1,13 +1,20 @@
 module Main where
 
 import Evaluator (eval)
-import Lexer (lexx)
-import Parser (parse)
+import Lexer
+import Parser
 
-main :: IO ()
+main :: IO [()]
 main =
-  let expr = fst . parse . lexx $ "12 + (2 - 3) * 9 / 2"
-   in case expr of
-        Just e -> do
-          print e
-          print . eval $ e
+  traverse
+    (printRes . parse . lexx)
+    [ "1 + 2 + 3 + 4", --10
+      "(1 + 2) * 3 - 4", --5
+      "1 * 2 * 3 * 4" --24
+    ]
+  where
+    printRes :: (Expr, [Syntax]) -> IO ()
+    printRes (e, t) = do
+      print e
+      print t
+      print . eval $ e
