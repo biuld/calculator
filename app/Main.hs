@@ -1,24 +1,16 @@
 module Main where
 
-import Evaluator (eval)
+import Evaluator
 import Lexer
 import Parser
 
 main :: IO [()]
 main =
   traverse
-    (printRes . parse . lexx)
+    (prettyPrint . fst . parse . lexx)
     [ 
-      "1 + 2 + 3 + 4", --10
-      "(1 + 2) * 3 - 4", --5
-      "1 * 2 * 3 * 4", --24
-      "- 1 + 2", --1
-      "+ 1 - 1 - 1 + 2", --1
-      "+ - - + 3" --3
+      "-1 + (1 - 1) * 1 / 1",
+      "(1 + 2) * 3 - 4",
+      "1 * 2 * 3 * 4",
+      "+ - - + 3" 
     ]
-  where
-    printRes :: (Expr, [Syntax]) -> IO ()
-    printRes (e, t) = do
-      print e
-      print t
-      print . eval $ e
