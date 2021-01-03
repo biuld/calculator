@@ -38,7 +38,11 @@ parse input = tryRestart $ parseExpr (filter notSpace input) 0
     tryRestart :: (Expr, [Syntax]) -> (Expr, [Syntax])
     tryRestart (l, []) = (l, [])
     tryRestart (l, op : tail) = case parseExpr tail (getBinaryOpPrecedence op) of
-      (r, rst) -> tryRestart (buildBinaryExpr op l r, rst)
+      (r, []) -> (buildBinaryExpr op l r, [])
+      (r, rst) -> 
+        let 
+          (rr, rrst) = tryRestart (r, rst)
+        in (buildBinaryExpr op l rr, rrst)
 
     parseExpr :: [Syntax] -> Precedence -> (Expr, [Syntax])
     parseExpr xs@(h:t) p 
