@@ -2,7 +2,7 @@ module Lexer where
 
 import Data.Char (digitToInt, isDigit)
 
-data Syntax
+data Token
   = I Int
   | Add
   | Mul
@@ -13,25 +13,28 @@ data Syntax
   | Space
   deriving (Show)
 
-lexx :: String -> [Syntax]
+lexx :: String -> [Token]
 lexx [] = []
 lexx xs =
-  case buildISyntax xs of
-    (Nothing, x : tail) -> buildSyntax x : lexx tail
+  case getIToken xs of
+    (Nothing, x : tail) -> 
+      case getToken x of
+        Space -> lexx tail
+        t -> t:lexx tail
     (Just a, tail) -> a : lexx tail
   where
-    buildSyntax :: Char -> Syntax
-    buildSyntax '*' = Mul
-    buildSyntax '+' = Add
-    buildSyntax ' ' = Space
-    buildSyntax '/' = Div
-    buildSyntax '-' = Sub
-    buildSyntax '(' = OpenPth
-    buildSyntax ')' = ClosePth
-    buildSyntax c = error $ show c
+    getToken :: Char -> Token
+    getToken '*' = Mul
+    getToken '+' = Add
+    getToken ' ' = Space
+    getToken '/' = Div
+    getToken '-' = Sub
+    getToken '(' = OpenPth
+    getToken ')' = ClosePth
+    getToken c = error $ show c
 
-    buildISyntax :: String -> (Maybe Syntax, String)
-    buildISyntax xs =
+    getIToken :: String -> (Maybe Token, String)
+    getIToken xs =
       case span isDigit xs of
         ([], tail) -> (Nothing, tail)
         (num, tail) -> (Just . I $ read num, tail)
