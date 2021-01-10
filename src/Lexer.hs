@@ -1,27 +1,36 @@
 module Lexer where
 
-import Data.Char (digitToInt, isDigit)
+import Data.Char (digitToInt, isDigit, isLetter)
 
 data Token
   = I Int
+  | B Bool
   | Add
   | Mul
   | Div
   | Sub
+  | Equal
+  | And
+  | Or
+  | Not
+  | Space
   | OpenPth
   | ClosePth
-  | Space
   deriving (Show)
 
 lexx :: String -> [Token]
 lexx [] = []
-lexx xs =
-  case getIToken xs of
-    (Nothing, x : tail) -> 
-      case getToken x of
-        Space -> lexx tail
-        t -> t:lexx tail
-    (Just a, tail) -> a : lexx tail
+lexx xs@(h:tail) 
+  | isDigit h = 
+    case getIToken xs of
+      (token, rst) -> token:lexx rst
+  | isLetter h = 
+    case getKeywordToken xs of
+      (token, rst) -> token:lexx rst
+  | otherwise = 
+    case getToken h of
+      Space -> lexx tail
+      token -> token:lexx tail
   where
     getToken :: Char -> Token
     getToken '*' = Mul
@@ -31,10 +40,20 @@ lexx xs =
     getToken '-' = Sub
     getToken '(' = OpenPth
     getToken ')' = ClosePth
-    getToken c = error $ show c
+    getToken c = error $ show c <> " is not a valid token"
 
-    getIToken :: String -> (Maybe Token, String)
+    getIToken :: String -> (Token, String)
     getIToken xs =
       case span isDigit xs of
-        ([], tail) -> (Nothing, tail)
-        (num, tail) -> (Just . I $ read num, tail)
+        (num, tail) -> (I $ read num, tail)
+
+    getKeywordToken :: String -> (Token, String)
+    getKeywordToken xs =
+      case span isLetter xs of
+        ("true", tail) -> (B True, tail)
+        ("false", tail) -> (B False, tail)
+        ("and", tail) -> (And, tail)
+        ("or", tail) -> (Or, tail)
+        ("not", tail) -> (Not, tail)
+        ("eq", tail) -> (Equal, tail)
+        (other, _) -> error $ show other <> " is not a valid token"
