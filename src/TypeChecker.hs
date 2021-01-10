@@ -32,6 +32,10 @@ typeCheck (Binary op l r) =
       (Div, II, II) -> II
       (Equal, II, II) -> BB
       (Equal, BB, BB) -> BB
+      (NotEqual, II, II) -> BB
+      (NotEqual, BB, BB) -> BB
+      (NotEqual, II, BB) -> BB
+      (NotEqual, BB, II) -> BB
       (And, BB, BB) -> BB
       (Or, BB, BB) -> BB
       (_, lt, rt) -> error $ binErrMsg op l lt r rt

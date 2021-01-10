@@ -19,5 +19,11 @@ main =
       "not true",
       "true and false",
       "false or false",
-      "true eq false" 
+      "true eq false",
+      "1 eq 2 and 2 eq 3",
+      "1 eq 2 or 2 eq 2",
+      "true and true eq true or false",
+      "1 noeq 2",
+      "true noeq false",
+      "1 noeq true"
     ]

@@ -19,15 +19,20 @@ instance Show (Expr a) where
 type Precedence = Int
 
 getUnaryOpPrecedence :: Token -> Precedence
-getUnaryOpPrecedence Add = 3
-getUnaryOpPrecedence Sub = 3
+getUnaryOpPrecedence Add = 6
+getUnaryOpPrecedence Sub = 6
+getUnaryOpPrecedence Not = 6
 getUnaryOpPrecedence _ = 0
 
 getBinaryOpPrecedence :: Token -> Precedence
-getBinaryOpPrecedence Mul = 2
-getBinaryOpPrecedence Div = 2
-getBinaryOpPrecedence Add = 1
-getBinaryOpPrecedence Sub = 1
+getBinaryOpPrecedence Mul = 5
+getBinaryOpPrecedence Div = 5
+getBinaryOpPrecedence Add = 4
+getBinaryOpPrecedence Sub = 4
+getBinaryOpPrecedence Equal = 3
+getBinaryOpPrecedence NotEqual = 3
+getBinaryOpPrecedence And = 2
+getBinaryOpPrecedence Or = 1
 getBinaryOpPrecedence _ = 0
 
 parse :: [Token] -> (Expr a, [Token])

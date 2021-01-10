@@ -10,6 +10,7 @@ data Token
   | Div
   | Sub
   | Equal
+  | NotEqual
   | And
   | Or
   | Not
@@ -56,4 +57,5 @@ lexx xs@(h:tail)
         ("or", tail) -> (Or, tail)
         ("not", tail) -> (Not, tail)
         ("eq", tail) -> (Equal, tail)
+        ("noeq", tail) -> (NotEqual, tail)
         (other, _) -> error $ show other <> " is not a valid token"
