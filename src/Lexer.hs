@@ -21,26 +21,31 @@ data Token
 
 lexx :: String -> [Token]
 lexx [] = []
-lexx xs@(h:tail) 
+lexx xs@(h:_) 
   | isDigit h = 
     case getIToken xs of
-      (token, rst) -> token:lexx rst
+      (token, tail) -> token:lexx tail
   | isLetter h = 
     case getKeywordToken xs of
-      (token, rst) -> token:lexx rst
+      (token, tail) -> token:lexx tail
   | otherwise = 
-    case getToken h of
-      Space -> lexx tail
-      token -> token:lexx tail
+    case getToken xs of
+      (Space, tail) -> lexx tail
+      (token, tail) -> token:lexx tail
   where
-    getToken :: Char -> Token
-    getToken '*' = Mul
-    getToken '+' = Add
-    getToken ' ' = Space
-    getToken '/' = Div
-    getToken '-' = Sub
-    getToken '(' = OpenPth
-    getToken ')' = ClosePth
+    getToken :: String -> (Token, String)
+    getToken ('*':tail) = (Mul, tail)
+    getToken ('+':tail) = (Add, tail)
+    getToken (' ':tail) = (Space, tail)
+    getToken ('/':tail) = (Div, tail)
+    getToken ('-':tail) = (Sub, tail)
+    getToken ('(':tail) = (OpenPth, tail)
+    getToken (')':tail) = (ClosePth, tail)
+    getToken ('=':'=':tail) = (Equal, tail)
+    getToken ('!':'=':tail) = (NotEqual, tail)
+    getToken ('&':'&':tail) = (And, tail)
+    getToken ('|':'|':tail) = (Or, tail)
+    getToken ('!':tail) = (Not, tail)
     getToken c = error $ show c <> " is not a valid token"
 
     getIToken :: String -> (Token, String)
@@ -53,9 +58,4 @@ lexx xs@(h:tail)
       case span isLetter xs of
         ("true", tail) -> (B True, tail)
         ("false", tail) -> (B False, tail)
-        ("and", tail) -> (And, tail)
-        ("or", tail) -> (Or, tail)
-        ("not", tail) -> (Not, tail)
-        ("eq", tail) -> (Equal, tail)
-        ("noeq", tail) -> (NotEqual, tail)
         (other, _) -> error $ show other <> " is not a valid token"
