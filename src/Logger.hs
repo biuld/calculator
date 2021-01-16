@@ -4,11 +4,12 @@ import Parser
 import Evaluator
 import TypeChecker
 
-prettyPrint :: Expr a -> IO ()
-prettyPrint e = do
-  print $ typeCheck e
-  print $ eval e
-  logST e "" True
+prettyPrint :: Expr a -> Bool -> IO ()
+prettyPrint e showTree = do
+  case (typeCheck e, eval e) of
+    (Left msg, _) -> putStrLn msg
+    (Right t, v) -> putStrLn $ (show v) <> " :: " <> (show t)
+  if showTree then logST e "" True else return ()
   putStr "\n"
 
 logST :: Expr a -> String -> Bool -> IO ()

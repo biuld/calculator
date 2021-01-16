@@ -15,6 +15,8 @@ eval (Binary op l r) =
     (Div, Figure li, Figure ri) -> Figure $ li `div` ri
     (Equal, Figure li, Figure ri) -> Boolean $ li == ri
     (Equal, Boolean lb, Boolean rb) -> Boolean $ lb == rb
+    (Equal, Figure _, Boolean _) -> Boolean False
+    (Equal, Boolean _, Figure _) -> Boolean False
     (NotEqual, Figure li, Figure ri) -> Boolean $ li /= ri
     (NotEqual, Boolean lb, Boolean rb) -> Boolean $ lb /= rb
     (NotEqual, Figure _, Boolean _) -> Boolean True

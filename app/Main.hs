@@ -4,26 +4,32 @@ import Evaluator
 import Lexer
 import Parser
 import Logger
+import System.IO
 
-main :: IO [()]
-main =
-  traverse
-    (prettyPrint . fst . parse . lexx)
-    [ 
-      "-1 + (1 - 1) * 1 / 1",
-      "(1 + 2) * 3 - 4",
-      "1 * 2 * 3 * 4",
-      "+ - - + 3", 
-      " 1 == 1",
-      "(1+2) == 3",
-      "! true",
-      "true && false",
-      "false || false",
-      "true == false",
-      "1 == 2 && 2 == 3",
-      "1 == 2 && 2 == 2",
-      "true && true == true || false",
-      "1 != 2",
-      "true != false",
-      "1 != true"
-    ]
+main :: IO ()
+main = runInterpreter False
+  where 
+    runInterpreter :: Bool -> IO ()
+    runInterpreter showTree = do
+      prompt
+      input <- getLine
+      case input of 
+        ":quit" -> putStrLn "goodbye!\n"
+        ":enableAST" -> do
+          putStrLn "displaying Abstract Syntax Tree\n"
+          runInterpreter True
+        ":disableAST" -> do
+          putStrLn "stop displaying Abstract Syntax Tree\n"
+          runInterpreter False
+        _ -> case do
+          tokens <- lexx input
+          res <- parse tokens
+          return $ fst res of
+            Left msg -> putStrLn msg
+            Right e -> prettyPrint e showTree
+          >> runInterpreter showTree
+
+    prompt :: IO ()
+    prompt = do 
+        putStr "cal> "
+        hFlush stdout

@@ -35,51 +35,59 @@ getBinaryOpPrecedence And = 2
 getBinaryOpPrecedence Or = 1
 getBinaryOpPrecedence _ = 0
 
-parse :: [Token] -> (Expr a, [Token])
-parse input = tryRestart $ parseExpr input 0
+parse :: [Token] -> Either String (Expr a, [Token])
+parse input = do
+  res <- parseExpr input 0
+  tryRestart res
   where
-    tryRestart :: (Expr a, [Token]) -> (Expr a, [Token])
-    tryRestart (l, []) = (l, [])
-    tryRestart (l, op : tail) = case parseExpr tail (getBinaryOpPrecedence op) of
-      (r, []) -> (Binary op l r, [])
-      (r, rst) -> 
-        let 
-          (rr, rrst) = tryRestart (r, rst)
-        in (Binary op l rr, rrst)
+    tryRestart :: (Expr a, [Token]) -> Either String (Expr a, [Token])
+    tryRestart (l, []) = return (l, [])
+    tryRestart (l, op : tail) = do
+      res <- parseExpr tail (getBinaryOpPrecedence op)
+      case res of
+        (r, []) -> return (Binary op l r, [])
+        (r, rst) -> 
+          do
+            (rr, rrst) <- tryRestart (r, rst)
+            return (Binary op l rr, rrst)
 
-    parseExpr :: [Token] -> Precedence -> (Expr a, [Token])
+    parseExpr :: [Token] -> Precedence -> Either String (Expr a, [Token])
     parseExpr xs@(Add:_) p = parseUnary xs p
     parseExpr xs@(Sub:_) p = parseUnary xs p
     parseExpr xs@(Not:_) p = parseUnary xs p
     parseExpr xs p = parseBinary xs p
 
-    parseBinary :: [Token] -> Precedence -> (Expr a, [Token])
-    parseBinary xs p = 
-      case parsePth xs of
-        (l, []) -> (l, [])
+    parseBinary :: [Token] -> Precedence -> Either String (Expr a, [Token])
+    parseBinary xs p = do
+      res <- parsePth xs
+      case res of
+        (l, []) -> return (l, [])
         (l, ys@(op : tail)) ->
           let precedence = getBinaryOpPrecedence op
             in if precedence > p
-                then case parseExpr tail precedence of
-                  (r, rst) -> (Binary op l r, rst)
-                else (l, ys)
+                then do
+                  (r, rst) <- parseExpr tail precedence 
+                  return (Binary op l r, rst)
+                else return (l, ys)
 
-    parseUnary :: [Token] -> Precedence -> (Expr a, [Token])
+    parseUnary :: [Token] -> Precedence -> Either String (Expr a, [Token])
     parseUnary (operator:tail) p =
       let precedence = getUnaryOpPrecedence operator 
           in if precedence >= p
-            then case parseExpr tail precedence of
-              (operand, rst) -> (Unary operator operand, rst)
-            else error $ "Error token " <> show operator
+            then do 
+              (operand, rst) <- parseExpr tail precedence
+              return (Unary operator operand, rst)
+            else Left $ "Error token " <> show operator
 
-    parsePth :: [Token] -> (Expr a, [Token])
-    parsePth (OpenPth : tail) =
-      case parseExpr tail 0 of
-        (e, ClosePth : rst) -> (Pth e, rst)
+    parsePth :: [Token] -> Either String (Expr a, [Token])
+    parsePth (OpenPth : tail) = do
+      res <- parseExpr tail 0 
+      case res of 
+        (e, ClosePth : rst) -> return (Pth e, rst)
     parsePth xs = parseLiteral xs
 
-    parseLiteral :: [Token] -> (Expr a, [Token])
-    parseLiteral ((I i) : tail) = (Figure i, tail)
-    parseLiteral ((B b) : tail) = (Boolean b, tail)
-    parseLiteral (h : tail) = error $ "Error token " <> show h
-    parseLiteral [] = error "got nothing when try to parse a literal expression"
+    parseLiteral :: [Token] -> Either String (Expr a, [Token])
+    parseLiteral ((I i) : tail) = return (Figure i, tail)
+    parseLiteral ((B b) : tail) = return (Boolean b, tail)
+    parseLiteral (h : tail) = Left $ "expected literal expression, got " <> show h
+    parseLiteral [] = Left "expected literal expression, got nothing"
