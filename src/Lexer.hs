@@ -36,37 +36,36 @@ instance Show Token where
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
-lexx xs@(h:_) 
+lexx xs@(h : _)
   | isDigit h = do
-    (token, tail) <- getIToken xs 
+    (token, tail) <- getIToken xs
     rst <- lexx tail
-    return $ token:rst
+    return $ token : rst
   | isLetter h = do
     (token, tail) <- getKeywordToken xs
     rst <- lexx tail
-    return $ token:rst
+    return $ token : rst
   | otherwise = do
     (token, tail) <- getToken xs
     case token of
       Space -> lexx tail
       _ -> do
         rst <- lexx tail
-        return $ token:rst
-
+        return $ token : rst
   where
     getToken :: String -> Either String (Token, String)
-    getToken ('*':tail) = return (Mul, tail)
-    getToken ('+':tail) = return (Add, tail)
-    getToken (' ':tail) = return (Space, tail)
-    getToken ('/':tail) = return (Div, tail)
-    getToken ('-':tail) = return (Sub, tail)
-    getToken ('(':tail) = return (OpenPth, tail)
-    getToken (')':tail) = return (ClosePth, tail)
-    getToken ('=':'=':tail) = return (Equal, tail)
-    getToken ('!':'=':tail) = return (NotEqual, tail)
-    getToken ('&':'&':tail) = return (And, tail)
-    getToken ('|':'|':tail) = return (Or, tail)
-    getToken ('!':tail) = return (Not, tail)
+    getToken ('*' : tail) = return (Mul, tail)
+    getToken ('+' : tail) = return (Add, tail)
+    getToken (' ' : tail) = return (Space, tail)
+    getToken ('/' : tail) = return (Div, tail)
+    getToken ('-' : tail) = return (Sub, tail)
+    getToken ('(' : tail) = return (OpenPth, tail)
+    getToken (')' : tail) = return (ClosePth, tail)
+    getToken ('=' : '=' : tail) = return (Equal, tail)
+    getToken ('!' : '=' : tail) = return (NotEqual, tail)
+    getToken ('&' : '&' : tail) = return (And, tail)
+    getToken ('|' : '|' : tail) = return (Or, tail)
+    getToken ('!' : tail) = return (Not, tail)
     getToken c = Left $ show c <> " is not a valid token"
 
     getIToken :: String -> Either String (Token, String)

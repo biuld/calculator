@@ -1,13 +1,13 @@
 module Evaluator where
 
-import Parser
 import Lexer
+import Parser
 
 eval :: Expr a -> Expr a
 eval (Figure i) = Figure i
 eval (Boolean b) = Boolean b
 eval (Pth e) = eval e
-eval (Binary op l r) = 
+eval (Binary op l r) =
   case (op, eval l, eval r) of
     (Add, Figure li, Figure ri) -> Figure $ li + ri
     (Sub, Figure li, Figure ri) -> Figure $ li - ri
@@ -23,8 +23,8 @@ eval (Binary op l r) =
     (NotEqual, Boolean _, Figure _) -> Boolean True
     (And, Boolean lb, Boolean rb) -> Boolean $ lb && rb
     (Or, Boolean lb, Boolean rb) -> Boolean $ lb || rb
-eval (Unary op e) = 
+eval (Unary op e) =
   case (op, eval e) of
     (Add, Figure i) -> Figure i
-    (Sub, Figure i) -> Figure $ -i
+    (Sub, Figure i) -> Figure $ - i
     (Not, Boolean b) -> Boolean $ not b

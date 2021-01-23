@@ -46,15 +46,15 @@ parse input = do
       res <- parseExpr tail (getBinaryOpPrecedence op)
       case res of
         (r, []) -> return (Binary op l r, [])
-        (r, rst) -> 
+        (r, rst) ->
           do
             (rr, rrst) <- tryRestart (r, rst)
             return (Binary op l rr, rrst)
 
     parseExpr :: [Token] -> Precedence -> Either String (Expr a, [Token])
-    parseExpr xs@(Add:_) p = parseUnary xs p
-    parseExpr xs@(Sub:_) p = parseUnary xs p
-    parseExpr xs@(Not:_) p = parseUnary xs p
+    parseExpr xs@(Add : _) p = parseUnary xs p
+    parseExpr xs@(Sub : _) p = parseUnary xs p
+    parseExpr xs@(Not : _) p = parseUnary xs p
     parseExpr xs p = parseBinary xs p
 
     parseBinary :: [Token] -> Precedence -> Either String (Expr a, [Token])
@@ -64,25 +64,25 @@ parse input = do
         (l, []) -> return (l, [])
         (l, ys@(op : tail)) ->
           let precedence = getBinaryOpPrecedence op
-            in if precedence > p
+           in if precedence > p
                 then do
-                  (r, rst) <- parseExpr tail precedence 
+                  (r, rst) <- parseExpr tail precedence
                   return (Binary op l r, rst)
                 else return (l, ys)
 
     parseUnary :: [Token] -> Precedence -> Either String (Expr a, [Token])
-    parseUnary (operator:tail) p =
-      let precedence = getUnaryOpPrecedence operator 
-          in if precedence >= p
-            then do 
+    parseUnary (operator : tail) p =
+      let precedence = getUnaryOpPrecedence operator
+       in if precedence >= p
+            then do
               (operand, rst) <- parseExpr tail precedence
               return (Unary operator operand, rst)
             else Left $ "Error token " <> show operator
 
     parsePth :: [Token] -> Either String (Expr a, [Token])
     parsePth (OpenPth : tail) = do
-      res <- parseExpr tail 0 
-      case res of 
+      res <- parseExpr tail 0
+      case res of
         (e, ClosePth : rst) -> return (Pth e, rst)
     parsePth xs = parseLiteral xs
 
