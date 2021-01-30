@@ -46,10 +46,7 @@ parse input = do
       res <- parseExpr tail (getBinaryOpPrecedence op)
       case res of
         (r, []) -> return (Binary op l r, [])
-        (r, rst) ->
-          do
-            (rr, rrst) <- tryRestart (r, rst)
-            return (Binary op l rr, rrst)
+        (r, rst) -> tryRestart (Binary op l r, rst)
 
     parseExpr :: [Token] -> Precedence -> Either String (Expr a, [Token])
     parseExpr xs@(Add : _) p = parseUnary xs p
