@@ -1,9 +1,11 @@
 module Main where
 
+import Control.Monad.Except (MonadIO (liftIO), runExceptT)
+import Control.Monad.State.Strict (evalState)
 import Evaluator
 import Lexer
 import Logger
-import Parser
+import Parser (parse)
 import System.IO
 
 main :: IO ()
@@ -24,8 +26,7 @@ main = runInterpreter False
         _ ->
           case do
             tokens <- lexx input
-            res <- parse tokens
-            return $ fst res of
+            evalState (runExceptT parse) tokens of
             Left msg -> putStrLn msg
             Right e -> prettyPrint e showTree
             >> runInterpreter showTree

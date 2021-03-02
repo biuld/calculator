@@ -1,5 +1,7 @@
 module Parser where
 
+import Control.Monad.Except (ExceptT, MonadError (throwError))
+import Control.Monad.State.Strict (MonadState (get, put), State, modify)
 import Lexer
 
 data Expr a
@@ -35,56 +37,76 @@ getBinaryOpPrecedence And = 2
 getBinaryOpPrecedence Or = 1
 getBinaryOpPrecedence _ = 0
 
-parse :: [Token] -> Either String (Expr a, [Token])
-parse input = do
-  res <- parseExpr input 0
-  tryRestart res
+type Parser = ExceptT String (State [Token])
+
+parse :: Parser (Expr a)
+parse = do
+  e <- parseExpr 0
+  t <- get
+  tryRestart (e, t)
   where
-    tryRestart :: (Expr a, [Token]) -> Either String (Expr a, [Token])
-    tryRestart (l, []) = return (l, [])
+    tryRestart :: (Expr a, [Token]) -> Parser (Expr a)
+    tryRestart (l, []) = return l
     tryRestart (l, op : tail) = do
-      res <- parseExpr tail (getBinaryOpPrecedence op)
-      case res of
-        (r, []) -> return (Binary op l r, [])
-        (r, rst) -> tryRestart (Binary op l r, rst)
+      put tail
+      r <- parseExpr (getBinaryOpPrecedence op)
+      t <- get
+      case (r, t) of
+        (r, []) -> return $ Binary op l r
+        (r, _) -> tryRestart (Binary op l r, t)
 
-    parseExpr :: [Token] -> Precedence -> Either String (Expr a, [Token])
-    parseExpr xs@(Add : _) p = parseUnary xs p
-    parseExpr xs@(Sub : _) p = parseUnary xs p
-    parseExpr xs@(Not : _) p = parseUnary xs p
-    parseExpr xs p = parseBinary xs p
+    parseExpr :: Precedence -> Parser (Expr a)
+    parseExpr p = do
+      t <- get
+      case t of
+        (Add : _) -> parseUnary p
+        (Sub : _) -> parseUnary p
+        (Not : _) -> parseUnary p
+        _ -> parseBinary p
 
-    parseBinary :: [Token] -> Precedence -> Either String (Expr a, [Token])
-    parseBinary xs p = do
-      res <- parsePth xs
-      case res of
-        (l, []) -> return (l, [])
-        (l, ys@(op : tail)) ->
+    parseBinary :: Precedence -> Parser (Expr a)
+    parseBinary p = do
+      e <- parsePth
+      t <- get
+      case (e, t) of
+        (l, []) -> return l
+        (l, op : tail) ->
           let precedence = getBinaryOpPrecedence op
            in if precedence > p
                 then do
-                  (r, rst) <- parseExpr tail precedence
-                  return (Binary op l r, rst)
-                else return (l, ys)
+                  put tail
+                  r <- parseExpr precedence
+                  return $ Binary op l r
+                else return l
 
-    parseUnary :: [Token] -> Precedence -> Either String (Expr a, [Token])
-    parseUnary (operator : tail) p =
-      let precedence = getUnaryOpPrecedence operator
+    parseUnary :: Precedence -> Parser (Expr a)
+    parseUnary p = do
+      t <- get
+      let (operator : tail) = t
+          precedence = getBinaryOpPrecedence operator
        in if precedence >= p
             then do
-              (operand, rst) <- parseExpr tail precedence
-              return (Unary operator operand, rst)
-            else Left $ "Error token " <> show operator
+              put tail
+              operand <- parseExpr precedence
+              return $ Unary operator operand
+            else throwError $ "Error token " <> show operator
 
-    parsePth :: [Token] -> Either String (Expr a, [Token])
-    parsePth (OpenPth : tail) = do
-      res <- parseExpr tail 0
-      case res of
-        (e, ClosePth : rst) -> return (Pth e, rst)
-    parsePth xs = parseLiteral xs
+    parsePth :: Parser (Expr a)
+    parsePth = do
+      t <- get
+      case t of
+        (OpenPth : tail) -> do
+          put tail
+          e <- parseExpr 0
+          modify (drop 1) -- drop ClosePth
+          return $ Pth e
+        _ -> parseLiteral
 
-    parseLiteral :: [Token] -> Either String (Expr a, [Token])
-    parseLiteral ((I i) : tail) = return (Figure i, tail)
-    parseLiteral ((B b) : tail) = return (Boolean b, tail)
-    parseLiteral (h : tail) = Left $ "expected literal expression, got " <> show h
-    parseLiteral [] = Left "expected literal expression, got nothing"
+    parseLiteral :: Parser (Expr a)
+    parseLiteral = do
+      t <- get
+      case t of
+        ((I i) : tail) -> do put tail; return $ Figure i
+        ((B b) : tail) -> do put tail; return $ Boolean b
+        (h : _) -> throwError $ "expected literal expression, got " <> show h
+        [] -> throwError "expected literal expression, got nothing"
