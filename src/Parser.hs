@@ -1,7 +1,7 @@
 module Parser where
 
-import Control.Monad.Except (ExceptT, MonadError (throwError))
-import Control.Monad.State.Strict (MonadState (get, put), State, modify)
+import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
+import Control.Monad.State.Strict (MonadState (get, put), State, evalState, modify)
 import Lexer
 
 data Expr a
@@ -39,12 +39,15 @@ getBinaryOpPrecedence _ = 0
 
 type Parser = ExceptT String (State [Token])
 
-parse :: Parser (Expr a)
-parse = do
-  e <- parseExpr 0
-  t <- get
-  tryRestart (e, t)
+parse :: [Token] -> Either String (Expr a)
+parse t = evalState (runExceptT chain) t
   where
+    chain :: Parser (Expr a)
+    chain = do
+      e <- parseExpr 0
+      t <- get
+      tryRestart (e, t)
+
     tryRestart :: (Expr a, [Token]) -> Parser (Expr a)
     tryRestart (l, []) = return l
     tryRestart (l, op : tail) = do
