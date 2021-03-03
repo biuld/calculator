@@ -1,7 +1,7 @@
 module Parser where
 
 import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
-import Control.Monad.State.Strict (MonadState (get, put), State, evalState, modify)
+import Control.Monad.State.Strict (MonadState (get, put), State, evalState)
 import Lexer
 
 data Expr a
@@ -40,24 +40,8 @@ getBinaryOpPrecedence _ = 0
 type Parser = ExceptT String (State [Token])
 
 parse :: [Token] -> Either String (Expr a)
-parse t = evalState (runExceptT chain) t
+parse t = evalState (runExceptT $ parseExpr 0) t
   where
-    chain :: Parser (Expr a)
-    chain = do
-      e <- parseExpr 0
-      t <- get
-      tryRestart (e, t)
-
-    tryRestart :: (Expr a, [Token]) -> Parser (Expr a)
-    tryRestart (l, []) = return l
-    tryRestart (l, op : tail) = do
-      put tail
-      r <- parseExpr (getBinaryOpPrecedence op)
-      t <- get
-      case (r, t) of
-        (r, []) -> return $ Binary op l r
-        (r, _) -> tryRestart (Binary op l r, t)
-
     parseExpr :: Precedence -> Parser (Expr a)
     parseExpr p = do
       t <- get
@@ -71,15 +55,18 @@ parse t = evalState (runExceptT chain) t
     parseBinary p = do
       e <- parsePth
       t <- get
-      case (e, t) of
-        (l, []) -> return l
-        (l, op : tail) ->
-          let precedence = getBinaryOpPrecedence op
-           in if precedence > p
+      loop (p, e, t)
+      where
+        loop :: (Precedence, Expr a, [Token]) -> Parser (Expr a)
+        loop (_, e, []) = return e
+        loop (p, l, op : tail) =
+          let p' = getBinaryOpPrecedence op
+           in if p' > p
                 then do
                   put tail
-                  r <- parseExpr precedence
-                  return $ Binary op l r
+                  r <- parseExpr p'
+                  t' <- get
+                  loop (0, Binary op l r, t')
                 else return l
 
     parseUnary :: Precedence -> Parser (Expr a)
@@ -101,8 +88,10 @@ parse t = evalState (runExceptT chain) t
         (OpenPth : tail) -> do
           put tail
           e <- parseExpr 0
-          modify (drop 1) -- drop ClosePth
-          return $ Pth e
+          t' <- get
+          case t' of
+            (ClosePth : tail) -> do put tail; return e
+            [] -> throwError "expected ')', got nothing"
         _ -> parseLiteral
 
     parseLiteral :: Parser (Expr a)
