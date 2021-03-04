@@ -17,6 +17,7 @@ data Token
   | Space
   | OpenPth
   | ClosePth
+  deriving (Eq)
 
 instance Show Token where
   show (I i) = show i

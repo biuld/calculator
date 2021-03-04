@@ -10,6 +10,7 @@ data Expr a
   | Pth (Expr a)
   | Unary Token (Expr a)
   | Binary Token (Expr a) (Expr a)
+  deriving (Eq)
 
 instance Show (Expr a) where
   show (Figure i) = show i
@@ -73,7 +74,7 @@ parse t = evalState (runExceptT $ parseExpr 0) t
     parseUnary p = do
       t <- get
       let (operator : tail) = t
-          precedence = getBinaryOpPrecedence operator
+          precedence = getUnaryOpPrecedence operator
        in if precedence >= p
             then do
               put tail
