@@ -1,7 +1,8 @@
 module Main where
 
 import Control.Monad.Trans
-import Data.List (isPrefixOf)
+import Data.List
+import Data.Char
 import Evaluator
 import Lexer
 import Logger
@@ -18,13 +19,16 @@ settings =
   let c = completeWord Nothing " \t" $ return . searchFunc
    in setComplete c defaultSettings
 
+trim :: Maybe String -> Maybe String 
+trim = fmap $ dropWhileEnd isSpace . dropWhile isSpace 
+  
 main :: IO ()
 main = runInputT settings (loop False)
   where
     loop :: Bool -> InputT IO ()
     loop showTree = do
-      minput <- getInputLine "cal>"
-      case minput of
+      minput <- getInputLine "\ESC[1;32m\STXcal> \ESC[0m\STX"
+      case trim minput of
         Nothing -> loop showTree
         Just ":quit" -> outputStrLn "goodbye! 😎\n"
         Just ":enableAST" -> do
