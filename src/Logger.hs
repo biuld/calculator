@@ -3,15 +3,15 @@ module Logger where
 import Control.Monad
 import Evaluator
 import Parser
-import TypeChecker
 import Utils
 
 prettyPrint :: Expr -> Bool -> IO ()
 prettyPrint e showTree = do
-  case (typeCheck e, eval e) of
-    (Left msg, _) -> putStrLn msg
-    (Right t, v) -> putStrLn $ disp v <> " :: " <> disp t
-  when showTree $ logST e "" True
+  case eval e of
+    Left msg -> putStrLn msg
+    Right v -> do
+      putStrLn $ disp v 
+      when showTree $ logST e "" True
   putStr "\n"
 
 logST :: Expr -> String -> Bool -> IO ()
@@ -19,7 +19,7 @@ logST (If b l r) indent isLast = printBinaryExpr (disp b) indent isLast l r
 logST (Binary op l r) indent isLast = printBinaryExpr (disp op) indent isLast l r
 logST (Pth e) indent isLast = printUnaryExpr "()" indent isLast e
 logST (Unary op e) indent isLast = printUnaryExpr (disp op) indent isLast e
-logST Unit indent _ = do putStrLn $ indent <>  "└──" <> disp Unit
+logST Unit indent _ = do putStrLn $ indent <> "└──" <> disp Unit
 logST (Figure i) indent _ = do
   putStrLn $ indent <> "└──" <> show i
 logST (Boolean b) indent _ = do

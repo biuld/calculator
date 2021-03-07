@@ -7,7 +7,7 @@ cal :: String -> Either String Expr
 cal input = do
   t <- lexx input
   e <- parse t
-  return $ eval e
+  eval e
 
 main :: IO ()
 main = hspec $ do

@@ -16,8 +16,8 @@ data Expr
   deriving (Eq, Show)
 
 instance Display Expr where
-  disp (Figure i) = show i
-  disp (Boolean b) = show b
+  disp (Figure i) = show i <> " :: Figure"
+  disp (Boolean b) = show b <> " :: Boolean"
   disp (Pth e) = "( " <> disp e <> " )"
   disp (Binary op l r) = disp l <> " " <> disp op <> " " <> disp r
   disp (Unary op e) = disp op <> " " <> disp e

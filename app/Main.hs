@@ -31,10 +31,9 @@ main = runInputT settings (loop False)
           outputStrLn ":quit => to say goodbye 👋\n"
           loop showTree
         Just other ->
-          let res = do
-                tokens <- lexx other
-                parse tokens
-           in case res of
-                Left msg -> outputStrLn $ msg <> "\n"
-                Right e -> lift $ prettyPrint e showTree
-                >> loop showTree
+          let res = do t <- lexx other; parse t
+           in do
+                case res of
+                  Left msg -> outputStrLn $ msg <> "\n"
+                  Right e -> lift $ prettyPrint e showTree
+                loop showTree
