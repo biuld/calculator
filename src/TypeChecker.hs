@@ -9,7 +9,7 @@ instance Show Type where
   show BB = "Boolean"
   show II = "Integer"
 
-binErrMsg :: Token -> Expr a -> Type -> Expr a -> Type -> String
+binErrMsg :: Token -> Expr -> Type -> Expr -> Type -> String
 binErrMsg op l lt r rt =
   show op
     <> " is not defined for "
@@ -21,7 +21,7 @@ binErrMsg op l lt r rt =
     <> " :: "
     <> show rt
 
-unErrMsg :: Token -> Expr a -> Type -> String
+unErrMsg :: Token -> Expr -> Type -> String
 unErrMsg op e t =
   show op
     <> " is not defined for "
@@ -29,7 +29,7 @@ unErrMsg op e t =
     <> " :: "
     <> show t
 
-typeCheck :: Expr a -> Either String Type
+typeCheck :: Expr -> Either String Type
 typeCheck (Figure _) = return II
 typeCheck (Boolean _) = return BB
 typeCheck (Pth e) = typeCheck e

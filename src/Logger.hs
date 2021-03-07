@@ -1,11 +1,11 @@
 module Logger where
 
+import Control.Monad
 import Evaluator
 import Parser
 import TypeChecker
-import Control.Monad
 
-prettyPrint :: Expr a -> Bool -> IO ()
+prettyPrint :: Expr -> Bool -> IO ()
 prettyPrint e showTree = do
   case (typeCheck e, eval e) of
     (Left msg, _) -> putStrLn msg
@@ -13,7 +13,7 @@ prettyPrint e showTree = do
   when showTree $ logST e "" True
   putStr "\n"
 
-logST :: Expr a -> String -> Bool -> IO ()
+logST :: Expr -> String -> Bool -> IO ()
 logST (Binary op l r) indent isLast = printBinaryExpr (show op) indent isLast l r
 logST (Pth e) indent isLast = printUnaryExpr "()" indent isLast e
 logST (Unary op e) indent isLast = printUnaryExpr (show op) indent isLast e
@@ -28,7 +28,7 @@ type IsLast = Bool
 
 type Symbol = String
 
-printBinaryExpr :: Symbol -> Indent -> IsLast -> Expr a -> Expr a -> IO ()
+printBinaryExpr :: Symbol -> Indent -> IsLast -> Expr -> Expr -> IO ()
 printBinaryExpr sym indent isLast l r =
   let childIndent = indent <> if isLast then "   " else "|  "
       marker = if isLast then "└──" else "├──"
@@ -37,7 +37,7 @@ printBinaryExpr sym indent isLast l r =
         logST l childIndent False
         logST r childIndent True
 
-printUnaryExpr :: Symbol -> Indent -> IsLast -> Expr a -> IO ()
+printUnaryExpr :: Symbol -> Indent -> IsLast -> Expr -> IO ()
 printUnaryExpr sym indent isLast e =
   let childIndent = indent <> if isLast then "   " else "|  "
       marker = if isLast then "└──" else "├──"

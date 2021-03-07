@@ -4,15 +4,15 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.State.Strict (MonadState (get, put), State, evalState)
 import Lexer
 
-data Expr a
+data Expr
   = Figure Int
   | Boolean Bool
-  | Pth (Expr a)
-  | Unary Token (Expr a)
-  | Binary Token (Expr a) (Expr a)
+  | Pth Expr
+  | Unary Token Expr
+  | Binary Token Expr Expr
   deriving (Eq)
 
-instance Show (Expr a) where
+instance Show Expr where
   show (Figure i) = show i
   show (Boolean b) = show b
   show (Pth e) = "( " <> show e <> " )"
@@ -40,10 +40,10 @@ getBinaryOpPrecedence _ = 0
 
 type Parser = ExceptT String (State [Token])
 
-parse :: [Token] -> Either String (Expr a)
+parse :: [Token] -> Either String Expr
 parse t = evalState (runExceptT $ parseExpr 0) t
   where
-    parseExpr :: Precedence -> Parser (Expr a)
+    parseExpr :: Precedence -> Parser Expr
     parseExpr p = do
       t <- get
       case t of
@@ -52,13 +52,13 @@ parse t = evalState (runExceptT $ parseExpr 0) t
         (Not : _) -> parseUnary p
         _ -> parseBinary p
 
-    parseBinary :: Precedence -> Parser (Expr a)
+    parseBinary :: Precedence -> Parser Expr
     parseBinary p = do
       e <- parsePth
       t <- get
       loop (p, e, t)
       where
-        loop :: (Precedence, Expr a, [Token]) -> Parser (Expr a)
+        loop :: (Precedence, Expr, [Token]) -> Parser Expr
         loop (_, e, []) = return e
         loop (p, l, op : tail) =
           let p' = getBinaryOpPrecedence op
@@ -70,7 +70,7 @@ parse t = evalState (runExceptT $ parseExpr 0) t
                   loop (0, Binary op l r, t')
                 else return l
 
-    parseUnary :: Precedence -> Parser (Expr a)
+    parseUnary :: Precedence -> Parser Expr
     parseUnary p = do
       t <- get
       let (operator : tail) = t
@@ -82,7 +82,7 @@ parse t = evalState (runExceptT $ parseExpr 0) t
               return $ Unary operator operand
             else throwError $ "Error token " <> show operator
 
-    parsePth :: Parser (Expr a)
+    parsePth :: Parser Expr
     parsePth = do
       t <- get
       case t of
@@ -95,7 +95,7 @@ parse t = evalState (runExceptT $ parseExpr 0) t
             [] -> throwError "expected ')', got nothing"
         _ -> parseLiteral
 
-    parseLiteral :: Parser (Expr a)
+    parseLiteral :: Parser Expr
     parseLiteral = do
       t <- get
       case t of

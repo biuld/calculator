@@ -3,7 +3,7 @@ module Evaluator where
 import Lexer
 import Parser
 
-eval :: Expr a -> Expr a
+eval :: Expr -> Expr
 eval (Figure i) = Figure i
 eval (Boolean b) = Boolean b
 eval (Pth e) = eval e
