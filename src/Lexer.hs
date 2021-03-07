@@ -1,6 +1,7 @@
 module Lexer where
 
 import Data.Char (digitToInt, isDigit, isLetter)
+import Utils
 
 data Token
   = I Int
@@ -17,23 +18,23 @@ data Token
   | Space
   | OpenPth
   | ClosePth
-  deriving (Eq)
+  deriving (Eq, Show)
 
-instance Show Token where
-  show (I i) = show i
-  show (B b) = show b
-  show Add = "+"
-  show Sub = "-"
-  show Mul = "*"
-  show Div = "/"
-  show Equal = "=="
-  show NotEqual = "!="
-  show And = "&&"
-  show Or = "||"
-  show Not = "!"
-  show OpenPth = "("
-  show ClosePth = ")"
-  show Space = " "
+instance Display Token where
+  disp (I i) = show i
+  disp (B b) = show b
+  disp Add = "+"
+  disp Sub = "-"
+  disp Mul = "*"
+  disp Div = "/"
+  disp Equal = "=="
+  disp NotEqual = "!="
+  disp And = "&&"
+  disp Or = "||"
+  disp Not = "!"
+  disp OpenPth = "("
+  disp ClosePth = ")"
+  disp Space = " "
 
 lexx :: String -> Either String [Token]
 lexx [] = return []

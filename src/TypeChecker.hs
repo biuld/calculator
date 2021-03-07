@@ -2,12 +2,13 @@ module TypeChecker where
 
 import Lexer
 import Parser
+import Utils
 
-data Type = BB | II
+data Type = BB | II deriving (Eq, Show)
 
-instance Show Type where
-  show BB = "Boolean"
-  show II = "Integer"
+instance Display Type where
+  disp BB = "Boolean"
+  disp II = "Integer"
 
 binErrMsg :: Token -> Expr -> Type -> Expr -> Type -> String
 binErrMsg op l lt r rt =

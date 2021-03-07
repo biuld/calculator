@@ -3,6 +3,7 @@ module Parser where
 import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.State.Strict (MonadState (get, put), State, evalState)
 import Lexer
+import Utils
 
 data Expr
   = Figure Int
@@ -10,14 +11,14 @@ data Expr
   | Pth Expr
   | Unary Token Expr
   | Binary Token Expr Expr
-  deriving (Eq)
+  deriving (Eq, Show)
 
-instance Show Expr where
-  show (Figure i) = show i
-  show (Boolean b) = show b
-  show (Pth e) = "( " <> show e <> " )"
-  show (Binary op l r) = show l <> " " <> show op <> " " <> show r
-  show (Unary op e) = show op <> " " <> show e
+instance Display Expr where
+  disp (Figure i) = show i
+  disp (Boolean b) = show b
+  disp (Pth e) = "( " <> disp e <> " )"
+  disp (Binary op l r) = disp l <> " " <> disp op <> " " <> disp r
+  disp (Unary op e) = disp op <> " " <> disp e
 
 type Precedence = Int
 

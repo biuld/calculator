@@ -4,19 +4,20 @@ import Control.Monad
 import Evaluator
 import Parser
 import TypeChecker
+import Utils
 
 prettyPrint :: Expr -> Bool -> IO ()
 prettyPrint e showTree = do
   case (typeCheck e, eval e) of
     (Left msg, _) -> putStrLn msg
-    (Right t, v) -> putStrLn $ show v <> " :: " <> show t
+    (Right t, v) -> putStrLn $ disp v <> " :: " <> disp t
   when showTree $ logST e "" True
   putStr "\n"
 
 logST :: Expr -> String -> Bool -> IO ()
-logST (Binary op l r) indent isLast = printBinaryExpr (show op) indent isLast l r
+logST (Binary op l r) indent isLast = printBinaryExpr (disp op) indent isLast l r
 logST (Pth e) indent isLast = printUnaryExpr "()" indent isLast e
-logST (Unary op e) indent isLast = printUnaryExpr (show op) indent isLast e
+logST (Unary op e) indent isLast = printUnaryExpr (disp op) indent isLast e
 logST (Figure i) indent _ = do
   putStrLn $ indent <> "└──" <> show i
 logST (Boolean b) indent _ = do

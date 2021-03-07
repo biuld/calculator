@@ -1,34 +1,21 @@
 module Main where
 
 import Control.Monad.Trans
-import Data.List
-import Data.Char
 import Evaluator
 import Lexer
 import Logger
 import Parser (parse)
 import System.Console.Haskeline
 import System.IO
+import Utils
 
-options = [":enableAST", ":disableAST", ":help", ":quit"]
-
-searchFunc :: String -> [Completion]
-searchFunc str = map simpleCompletion $ filter (str `isPrefixOf`) options
-
-settings =
-  let c = completeWord Nothing " \t" $ return . searchFunc
-   in setComplete c defaultSettings
-
-trim :: Maybe String -> Maybe String 
-trim = fmap $ dropWhileEnd isSpace . dropWhile isSpace 
-  
 main :: IO ()
 main = runInputT settings (loop False)
   where
     loop :: Bool -> InputT IO ()
     loop showTree = do
       minput <- getInputLine "\ESC[1;32m\STXcal> \ESC[0m\STX"
-      case trim minput of
+      case fmap trim minput of
         Nothing -> loop showTree
         Just ":quit" -> outputStrLn "goodbye! 😎\n"
         Just ":enableAST" -> do
