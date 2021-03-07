@@ -6,7 +6,11 @@ import Parser
 eval :: Expr -> Expr
 eval (Figure i) = Figure i
 eval (Boolean b) = Boolean b
+eval Unit = Unit
 eval (Pth e) = eval e
+eval (If b l r) =
+  let Boolean bb = eval b
+   in if bb then eval l else eval r
 eval (Binary op l r) =
   case (op, eval l, eval r) of
     (Add, Figure li, Figure ri) -> Figure $ li + ri

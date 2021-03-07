@@ -18,6 +18,8 @@ data Token
   | Space
   | OpenPth
   | ClosePth
+  | Ift
+  | Elt
   deriving (Eq, Show)
 
 instance Display Token where
@@ -35,6 +37,8 @@ instance Display Token where
   disp OpenPth = "("
   disp ClosePth = ")"
   disp Space = " "
+  disp Ift = "if"
+  disp Elt = "else"
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
@@ -80,4 +84,6 @@ lexx xs@(h : _)
       case span isLetter xs of
         ("true", tail) -> return (B True, tail)
         ("false", tail) -> return (B False, tail)
+        ("if", tail) -> return (Ift, tail)
+        ("else", tail) -> return (Elt, tail)
         (other, _) -> Left $ show other <> " is not a valid token"

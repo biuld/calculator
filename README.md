@@ -19,7 +19,13 @@ command list:
 
 # Status
 
-For now *calculator* supports basic arithmetic operations for Int and Boolean algebra.
+For now *calculator* supports:
+
+- type check
+- basic arithmetic computation with parentheses
+- if expression
+
+You can check out all the test cases under `src/test/test.hs`
 
 # Reference
 

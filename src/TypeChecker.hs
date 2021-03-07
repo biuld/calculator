@@ -1,14 +1,16 @@
 module TypeChecker where
 
+import Evaluator
 import Lexer
 import Parser
 import Utils
 
-data Type = BB | II deriving (Eq, Show)
+data Type = BB | II | UU deriving (Eq, Show)
 
 instance Display Type where
   disp BB = "Boolean"
   disp II = "Integer"
+  disp UU = "Unit"
 
 binErrMsg :: Token -> Expr -> Type -> Expr -> Type -> String
 binErrMsg op l lt r rt =
@@ -33,7 +35,12 @@ unErrMsg op e t =
 typeCheck :: Expr -> Either String Type
 typeCheck (Figure _) = return II
 typeCheck (Boolean _) = return BB
+typeCheck Unit = return UU
 typeCheck (Pth e) = typeCheck e
+typeCheck (If b l r) =
+  case eval b of
+    Boolean bb -> if bb then typeCheck l else typeCheck r
+    n -> Left $ "expected a boolean condition in if expression, got " <> disp n
 typeCheck (Binary op l r) = do
   lt <- typeCheck l
   rt <- typeCheck r

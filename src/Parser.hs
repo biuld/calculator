@@ -8,9 +8,11 @@ import Utils
 data Expr
   = Figure Int
   | Boolean Bool
+  | Unit
   | Pth Expr
   | Unary Token Expr
   | Binary Token Expr Expr
+  | If Expr Expr Expr
   deriving (Eq, Show)
 
 instance Display Expr where
@@ -19,6 +21,7 @@ instance Display Expr where
   disp (Pth e) = "( " <> disp e <> " )"
   disp (Binary op l r) = disp l <> " " <> disp op <> " " <> disp r
   disp (Unary op e) = disp op <> " " <> disp e
+  disp Unit = "()"
 
 type Precedence = Int
 
@@ -51,7 +54,25 @@ parse t = evalState (runExceptT $ parseExpr 0) t
         (Add : _) -> parseUnary p
         (Sub : _) -> parseUnary p
         (Not : _) -> parseUnary p
+        (Ift : _) -> parseIf
         _ -> parseBinary p
+
+    parseIf :: Parser Expr
+    parseIf = do
+      t <- get
+      case t of
+        (Ift : tail) -> do
+          put tail
+          b <- parseExpr 0
+          l <- parseExpr 0
+          t' <- get
+          case t' of
+            (Elt : tail') -> do
+              put tail'
+              r <- parseExpr 0
+              return $ If b l r
+            (h : _) -> throwError $ "expected else token, got " <> disp h
+            [] -> return $ If b l Unit
 
     parseBinary :: Precedence -> Parser Expr
     parseBinary p = do
@@ -81,7 +102,7 @@ parse t = evalState (runExceptT $ parseExpr 0) t
               put tail
               operand <- parseExpr precedence
               return $ Unary operator operand
-            else throwError $ "Error token " <> show operator
+            else throwError $ "Error token " <> disp operator
 
     parsePth :: Parser Expr
     parsePth = do
@@ -102,5 +123,5 @@ parse t = evalState (runExceptT $ parseExpr 0) t
       case t of
         ((I i) : tail) -> do put tail; return $ Figure i
         ((B b) : tail) -> do put tail; return $ Boolean b
-        (h : _) -> throwError $ "expected literal expression, got " <> show h
+        (h : _) -> throwError $ "expected literal expression, got " <> disp h
         [] -> throwError "expected literal expression, got nothing"

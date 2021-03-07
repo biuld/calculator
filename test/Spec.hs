@@ -56,3 +56,6 @@ main = hspec $ do
 
     it "true && !false && true = true" $
       cal "true && !false && true" `shouldBe` Right (Boolean True)
+
+    it "dangling else" $
+      cal "if true if false 1 else 2" `shouldBe` Right (Figure 2)
