@@ -25,7 +25,7 @@ For now *calculator* supports:
 - basic arithmetic computation with parentheses
 - if expression
 
-You can check out all the test cases under `src/test/Spec.hs`
+You can check out all the test cases under `test/Spec.hs`
 
 # Reference
 
