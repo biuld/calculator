@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - mtl
 - haskeline
+- containers
+- optics
 
 library:
   source-dirs: src

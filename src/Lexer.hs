@@ -6,6 +6,7 @@ import Utils
 data Token
   = I Int
   | B Bool
+  | N String
   | Add
   | Mul
   | Div
@@ -20,11 +21,14 @@ data Token
   | ClosePth
   | Ift
   | Elt
+  | Assign
+  | Let
   deriving (Eq, Show)
 
 instance Display Token where
   disp (I i) = show i
   disp (B b) = show b
+  disp (N n) = n
   disp Add = "+"
   disp Sub = "-"
   disp Mul = "*"
@@ -39,6 +43,8 @@ instance Display Token where
   disp Space = " "
   disp Ift = "if"
   disp Elt = "else"
+  disp Assign = "="
+  disp Let = "let"
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
@@ -72,6 +78,7 @@ lexx xs@(h : _)
     getToken ('&' : '&' : tail) = return (And, tail)
     getToken ('|' : '|' : tail) = return (Or, tail)
     getToken ('!' : tail) = return (Not, tail)
+    getToken ('=' : tail) = return (Assign, tail)
     getToken c = Left $ show c <> " is not a valid token"
 
     getIToken :: String -> Either String (Token, String)
@@ -86,4 +93,5 @@ lexx xs@(h : _)
         ("false", tail) -> return (B False, tail)
         ("if", tail) -> return (Ift, tail)
         ("else", tail) -> return (Elt, tail)
-        (other, _) -> Left $ show other <> " is not a valid token"
+        ("let", tail) -> return (Let, tail)
+        (other, tail) -> return (N other, tail)

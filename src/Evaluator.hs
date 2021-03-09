@@ -1,5 +1,6 @@
 module Evaluator where
 
+import Data.Map.Strict as M
 import Lexer
 import Parser
 import Utils
@@ -18,19 +19,23 @@ unErrMsg op e =
     <> " is not defined for "
     <> disp e
 
-eval :: Expr -> Either String Expr
-eval (Figure i) = return $ Figure i
-eval (Boolean b) = return $ Boolean b
-eval Unit = return Unit
-eval (Pth e) = eval e
-eval (If b l r) = do
-  bv <- eval b
+eval :: Expr -> Map String Expr -> Either String Expr
+eval (Figure i) n = return $ Figure i
+eval (Boolean b) n = return $ Boolean b
+eval (Name v) n =
+  case M.lookup v n of
+    Just e -> eval e n
+    Nothing -> Left $ "variable " <> v <> " is undefined"
+eval Unit n = return Unit
+eval (Pth e) n = eval e n
+eval (If b l r) n = do
+  bv <- eval b n
   case bv of
-    Boolean bb -> if bb then eval l else eval r
+    Boolean bb -> if bb then eval l n else eval r n
     n -> Left $ "expected a boolean condition in if expression, got " <> disp n
-eval (Binary op l r) = do
-  lv <- eval l
-  rv <- eval r
+eval (Binary op l r) n = do
+  lv <- eval l n
+  rv <- eval r n
   case (op, lv, rv) of
     (Add, Figure li, Figure ri) -> return . Figure $ li + ri
     (Sub, Figure li, Figure ri) -> return . Figure $ li - ri
@@ -47,10 +52,11 @@ eval (Binary op l r) = do
     (And, Boolean lb, Boolean rb) -> return . Boolean $ lb && rb
     (Or, Boolean lb, Boolean rb) -> return . Boolean $ lb || rb
     (t, ll, rr) -> Left $ binErrMsg t ll rr
-eval (Unary op e) = do
-  ev <- eval e
+eval (Unary op e) n = do
+  ev <- eval e n
   case (op, ev) of
     (Add, Figure i) -> return $ Figure i
     (Sub, Figure i) -> return . Figure $ - i
     (Not, Boolean b) -> return . Boolean $ not b
     (t, ee) -> Left $ unErrMsg t ee
+eval (Bind _ e) n = eval e n

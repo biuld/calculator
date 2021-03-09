@@ -1,16 +1,18 @@
 module Logger where
 
 import Control.Monad
+import Data.Map.Strict
 import Evaluator
+import Lexer
 import Parser
 import Utils
 
-prettyPrint :: Expr -> Bool -> IO ()
-prettyPrint e showTree = do
-  case eval e of
+prettyPrint :: Expr -> Map String Expr -> Bool -> IO ()
+prettyPrint e n showTree = do
+  case eval e n of
     Left msg -> putStrLn msg
     Right v -> do
-      putStrLn $ disp v 
+      putStrLn $ disp v
       when showTree $ logST e "" True
   putStr "\n"
 
@@ -19,7 +21,9 @@ logST (If b l r) indent isLast = printBinaryExpr (disp b) indent isLast l r
 logST (Binary op l r) indent isLast = printBinaryExpr (disp op) indent isLast l r
 logST (Pth e) indent isLast = printUnaryExpr "()" indent isLast e
 logST (Unary op e) indent isLast = printUnaryExpr (disp op) indent isLast e
-logST Unit indent _ = do putStrLn $ indent <> "└──" <> disp Unit
+logST (Bind n e) indent isLast = printUnaryExpr n indent isLast e
+logST Unit indent _ = do
+  putStrLn $ indent <> "└──" <> disp Unit
 logST (Figure i) indent _ = do
   putStrLn $ indent <> "└──" <> show i
 logST (Boolean b) indent _ = do
