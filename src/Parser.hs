@@ -52,21 +52,21 @@ getBinaryOpPrecedence _ = 0
 data Context = Context
   { _tokens :: [Token],
     _names :: Map String Expr,
-    _tree :: Expr, -- the syntax tree
-    _root :: Expr -- the result of the tree
+    _tree :: Expr -- the syntax tree
   }
   deriving (Eq, Show)
 
 makeLenses ''Context
 
 emptyContext :: Context
-emptyContext = Context [] empty Unit Unit
+emptyContext = Context [] empty Unit
 
-parse :: Pack Context ()
+parse :: Pack Context Expr
 parse = do
   e <- parseExpr 0
   c <- get
-  put (c & tree .~ e)
+  put (c & tree .~ e) -- for eval's further use
+  return e
   where
     parseExpr :: Precedence -> Pack Context Expr
     parseExpr p = do

@@ -22,56 +22,50 @@ unErrMsg op e =
     <> " is not defined for "
     <> disp e
 
-eval :: Pack Context ()
+eval :: Pack Context Expr
 eval = do
   c@Context {_tree = tr} <- get
   case tr of
-    Figure i -> put (c & root .~ Figure i)
-    Boolean b -> put (c & root .~ Boolean b)
-    Unit -> put (c & root .~ Unit)
-    Pth e -> delegate e c
-    Bind _ e -> delegate e c
+    Figure i -> return $ Figure i
+    Boolean b -> return $ Boolean b
+    Unit -> return Unit
+    Pth e -> deduce e c
+    Bind _ e -> deduce e c
     Name n -> do
       Context {_names = names} <- get
       case M.lookup n names of
-        Just e -> delegate e c
-        Nothing -> put (c & root .~ Unit)
+        Just e -> deduce e c
+        Nothing -> return Unit
     If b l r -> do
       bv <- deduce b c
       case bv of
         Boolean bb ->
-          let h = if bb then l else r in delegate h c
+          let h = if bb then l else r in deduce h c
         n -> throwError $ "expected a boolean condition in if expression, got " <> disp n
     Unary op e -> do
       ev <- deduce e c
       case (op, ev) of
-        (Add, Figure i) -> put (c & root .~ Figure i)
-        (Sub, Figure i) -> put (c & root .~ Figure (- i))
-        (Not, Boolean b) -> put (c & root .~ Boolean (not b))
+        (Add, Figure i) -> return $ Figure i
+        (Sub, Figure i) -> return $ Figure (- i)
+        (Not, Boolean b) -> return $ Boolean (not b)
         (t, ee) -> throwError $ unErrMsg t ee
     Binary op l r -> do
       lv <- deduce l c
       rv <- deduce r c
       case (op, lv, rv) of
-        (Add, Figure li, Figure ri) -> put (c & root .~ Figure (li + ri))
-        (Sub, Figure li, Figure ri) -> put (c & root .~ Figure (li - ri))
-        (Mul, Figure li, Figure ri) -> put (c & root .~ Figure (li * ri))
-        (Div, Figure li, Figure ri) -> put (c & root .~ Figure (li `div` ri))
-        (Equal, Figure li, Figure ri) -> put (c & root .~ Boolean (li == ri))
-        (Equal, Boolean lb, Boolean rb) -> put (c & root .~ Boolean (lb == rb))
-        (NotEqual, Figure li, Figure ri) -> put (c & root .~ Boolean (li /= ri))
-        (NotEqual, Boolean lb, Boolean rb) -> put (c & root .~ Boolean (lb /= rb))
-        (And, Boolean lb, Boolean rb) -> put (c & root .~ Boolean (lb && rb))
-        (Or, Boolean lb, Boolean rb) -> put (c & root .~ Boolean (lb || rb))
+        (Add, Figure li, Figure ri) -> return $ Figure (li + ri)
+        (Sub, Figure li, Figure ri) -> return $ Figure (li - ri)
+        (Mul, Figure li, Figure ri) -> return $ Figure (li * ri)
+        (Div, Figure li, Figure ri) -> return $ Figure (li `div` ri)
+        (Equal, Figure li, Figure ri) -> return $ Boolean (li == ri)
+        (Equal, Boolean lb, Boolean rb) -> return $ Boolean (lb == rb)
+        (NotEqual, Figure li, Figure ri) -> return $ Boolean (li /= ri)
+        (NotEqual, Boolean lb, Boolean rb) -> return $ Boolean (lb /= rb)
+        (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
+        (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
   where
-    delegate :: Expr -> Context -> Pack Context ()
-    delegate e c = do
-      put (c & tree .~ e)
-      eval
-
     deduce :: Expr -> Context -> Pack Context Expr
     deduce e c = do
-      delegate e c
-      Context {_root = r} <- get
-      return r
+      put (c & tree .~ e)
+      eval

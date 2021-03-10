@@ -12,8 +12,10 @@
 command list:
 
 ```
+:context
 :enableAST
-:diableAST
+:disableAST
+:help
 :quit
 ```
 
@@ -21,9 +23,10 @@ command list:
 
 For now *calculator* supports:
 
-- type check
 - basic arithmetic computation with parentheses
 - if expression
+- assignments & variables
+- type check
 
 You can check out all the test cases under `test/Spec.hs`
 

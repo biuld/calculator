@@ -15,10 +15,18 @@ import Utils
 main :: IO ()
 main = runInputT settings (loop False emptyContext)
   where
-    cal :: String -> Context -> Either String Context
-    cal input c = do
-      t <- lexx input
-      return $ execState (runExceptT (do parse; eval)) (c & tokens .~ t)
+    cal :: String -> Context -> (Either String Expr, Context)
+    cal input c =
+      case lexx input of
+        Left msg -> (Left msg, c)
+        Right t ->
+          let chain = do
+                tr <- parse
+                r <- eval
+                c <- get
+                put (c & tree .~ tr) -- eval changes tree by default, put tr back for prettyPrint
+                return r
+           in runState (runExceptT chain) (c & tokens .~ t)
 
     loop :: Bool -> Context -> InputT IO ()
     loop showTree c = do
@@ -44,10 +52,10 @@ main = runInputT settings (loop False emptyContext)
           loop showTree c
         Just other ->
           case cal other c of
-            Left msg -> outputStrLn (msg <> "\n") >> loop showTree c
-            Right c'@Context {_tree = tr, _root = r} ->
+            (Left msg, _) -> outputStrLn (msg <> "\n") >> loop showTree c
+            (Right e, c'@Context {_tree = tr}) ->
               let pp = do
-                    putStrLn $ disp r
+                    putStrLn $ disp e
                     when showTree (prettyPrint tr)
                     putStrLn ""
                in lift pp >> loop showTree c'
