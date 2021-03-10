@@ -1,13 +1,16 @@
+import Control.Monad.Except
+import Control.Monad.State.Strict
 import Evaluator (eval)
 import Lexer (lexx)
 import Parser
 import Test.Hspec (describe, hspec, it, shouldBe)
+import Optics
 
 cal :: String -> Either String Expr
 cal input = do
   t <- lexx input
-  e <- parse t
-  eval e
+  let Context {_root = r} = execState (runExceptT (do parse; eval)) (emptyContext & tokens .~ t)
+   in return r
 
 main :: IO ()
 main = hspec $ do

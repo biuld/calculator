@@ -1,43 +1,53 @@
 module Main where
 
+import Control.Monad.Except
+import Control.Monad.State.Strict
 import Control.Monad.Trans
-import Data.Map.Strict
+import Data.Map
 import Evaluator
 import Lexer
 import Logger
+import Optics
 import Parser
 import System.Console.Haskeline
-import System.IO
 import Utils
 
 main :: IO ()
-main = runInputT settings (loop False empty)
+main = runInputT settings (loop False emptyContext)
   where
-    loop :: Bool -> Map String Expr -> InputT IO ()
-    loop showTree n = do
+    cal :: String -> Context -> Either String Context
+    cal input c = do
+      t <- lexx input
+      return $ execState (runExceptT (do parse; eval)) (c & tokens .~ t)
+
+    loop :: Bool -> Context -> InputT IO ()
+    loop showTree c = do
       minput <- getInputLine "\ESC[1;32m\STXcal> \ESC[0m\STX"
       case fmap trim minput of
-        Nothing -> loop showTree n
+        Nothing -> loop showTree c
         Just ":quit" -> outputStrLn "goodbye! 😎\n"
         Just ":enableAST" -> do
           outputStrLn "displaying Abstract Syntax Tree\n"
-          loop True n
+          loop True c
         Just ":disableAST" -> do
           outputStrLn "stop displaying Abstract Syntax Tree\n"
-          loop False n
+          loop False c
         Just ":help" -> do
+          outputStrLn ":context => to display calculation context"
           outputStrLn ":enableAST => to display the parse tree"
           outputStrLn ":disableAST => to stop displaying the parse tree"
           outputStrLn ":help => to display this message"
           outputStrLn ":quit => to say goodbye 👋\n"
-          loop showTree n
+          loop showTree c
         Just ":context" -> do
-          lift $ print n
-          loop showTree n
+          outputStrLn $ show c <> "\n"
+          loop showTree c
         Just other ->
-          case lexx other of
-            Left msg -> outputStrLn (msg <> "\n") >> loop showTree n
-            Right t ->
-              case parse t n of
-                (Left msg', _) -> outputStrLn (msg' <> "\n") >> loop showTree n
-                (Right e, n') -> lift (prettyPrint e n' showTree) >> loop showTree n'
+          case cal other c of
+            Left msg -> outputStrLn (msg <> "\n") >> loop showTree c
+            Right c'@Context {_tree = tr, _root = r} ->
+              let pp = do
+                    putStrLn $ disp r
+                    when showTree (prettyPrint tr)
+                    putStrLn ""
+               in lift pp >> loop showTree c'

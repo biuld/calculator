@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Parser where
 
 import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
@@ -47,18 +49,29 @@ getBinaryOpPrecedence And = 2
 getBinaryOpPrecedence Or = 1
 getBinaryOpPrecedence _ = 0
 
-type Context = ([Token], Map String Expr)
+data Context = Context
+  { _tokens :: [Token],
+    _names :: Map String Expr,
+    _tree :: Expr, -- the syntax tree
+    _root :: Expr -- the result of the tree
+  }
+  deriving (Eq, Show)
 
-type Parser = ExceptT String (State Context)
+makeLenses ''Context
 
-parse :: [Token] -> Map String Expr -> (Either String Expr, Map String Expr)
-parse t n =
-  let (e, (_, n')) = runState (runExceptT $ parseExpr 0) (t, n) in (e, n')
+emptyContext :: Context
+emptyContext = Context [] empty Unit Unit
+
+parse :: Pack Context ()
+parse = do
+  e <- parseExpr 0
+  c <- get
+  put (c & tree .~ e)
   where
-    parseExpr :: Precedence -> Parser Expr
+    parseExpr :: Precedence -> Pack Context Expr
     parseExpr p = do
       c <- get
-      case view _1 c of
+      case c ^. tokens of
         (Add : _) -> parseUnary p
         (Sub : _) -> parseUnary p
         (Not : _) -> parseUnary p
@@ -66,83 +79,83 @@ parse t n =
         (Let : _) -> parseBind
         _ -> parseBinary p
 
-    parseIf :: Parser Expr
+    parseIf :: Pack Context Expr
     parseIf = do
       c <- get
-      case view _1 c of
+      case c ^. tokens of
         (Ift : tail) -> do
-          put (set _1 tail c)
+          put (c & tokens .~ tail)
           b <- parseExpr 0
           l <- parseExpr 0
           c' <- get
-          case view _1 c' of
+          case c' ^. tokens of
             (Elt : tail') -> do
-              put (set _1 tail' c')
+              put (c' & tokens .~ tail')
               r <- parseExpr 0
               return $ If b l r
             [] -> return $ If b l Unit
             (h : _) -> throwError $ "expected else token, got " <> disp h
 
-    parseBind :: Parser Expr
+    parseBind :: Pack Context Expr
     parseBind = do
-      c@(t, n) <- get
+      c@Context {_tokens = t, _names = n} <- get
       case t of
         (Let : N name : Assign : tail) -> do
-          put (set _1 tail c)
+          put (c & tokens .~ tail)
           e <- parseExpr 0
-          put (set _2 (insert name e n) c)
+          put (c & names .~ insert name e n)
           return $ Bind name e
         other -> throwError "illegal let expression"
 
-    parseBinary :: Precedence -> Parser Expr
+    parseBinary :: Precedence -> Pack Context Expr
     parseBinary p = do
       e <- parsePth
       t <- get
       loop (p, e, t)
       where
-        loop :: (Precedence, Expr, Context) -> Parser Expr
-        loop (_, e, ([], _)) = return e
-        loop (p, l, c@(op : tail, _)) =
+        loop :: (Precedence, Expr, Context) -> Pack Context Expr
+        loop (_, e, Context {_tokens = []}) = return e
+        loop (p, l, c@Context {_tokens = op : tail}) =
           let p' = getBinaryOpPrecedence op
            in if p' > p
                 then do
-                  put (set _1 tail c)
+                  put (c & tokens .~ tail)
                   r <- parseExpr p'
                   t' <- get
                   loop (0, Binary op l r, t')
                 else return l
 
-    parseUnary :: Precedence -> Parser Expr
+    parseUnary :: Precedence -> Pack Context Expr
     parseUnary p = do
       c <- get
-      let (operator : tail) = view _1 c
+      let (operator : tail) = c ^. tokens
           precedence = getUnaryOpPrecedence operator
        in if precedence >= p
             then do
-              put (set _1 tail c)
+              put (c & tokens .~ tail)
               operand <- parseExpr precedence
               return $ Unary operator operand
             else throwError $ "Error token " <> disp operator
 
-    parsePth :: Parser Expr
+    parsePth :: Pack Context Expr
     parsePth = do
       c <- get
-      case view _1 c of
+      case c ^. tokens of
         (OpenPth : tail) -> do
-          put (set _1 tail c)
+          put (c & tokens .~ tail)
           e <- parseExpr 0
           c' <- get
-          case view _1 c' of
-            (ClosePth : tail) -> do put (set _1 tail c'); return e
+          case c' ^. tokens of
+            (ClosePth : tail') -> do put (c' & tokens .~ tail'); return e
             [] -> throwError "expected ')', got nothing"
         _ -> parseLiteral
 
-    parseLiteral :: Parser Expr
+    parseLiteral :: Pack Context Expr
     parseLiteral = do
       c <- get
-      case view _1 c of
-        ((I i) : tail) -> do put (set _1 tail c); return $ Figure i
-        ((B b) : tail) -> do put (set _1 tail c); return $ Boolean b
-        ((N n) : tail) -> do put (set _1 tail c); return $ Name n
+      case c ^. tokens of
+        ((I i) : tail) -> do put (c & tokens .~ tail); return $ Figure i
+        ((B b) : tail) -> do put (c & tokens .~ tail); return $ Boolean b
+        ((N n) : tail) -> do put (c & tokens .~ tail); return $ Name n
         (h : _) -> throwError $ "expected literal expression, got " <> disp h
         [] -> throwError "expected literal expression, got nothing"
