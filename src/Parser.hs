@@ -110,8 +110,8 @@ parse = do
     parseBinary :: Precedence -> Pack Context Expr
     parseBinary p = do
       e <- parsePth
-      t <- get
-      loop (p, e, t)
+      c <- get
+      loop (p, e, c)
       where
         loop :: (Precedence, Expr, Context) -> Pack Context Expr
         loop (_, e, Context {_tokens = []}) = return e
@@ -121,8 +121,8 @@ parse = do
                 then do
                   put (c & tokens .~ tail)
                   r <- parseExpr p'
-                  t' <- get
-                  loop (0, Binary op l r, t')
+                  c' <- get
+                  loop (0, Binary op l r, c')
                 else return l
 
     parseUnary :: Precedence -> Pack Context Expr
