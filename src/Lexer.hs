@@ -17,12 +17,15 @@ data Token
   | Or
   | Not
   | Space
+  | Separator
   | OpenPth
   | ClosePth
   | Ift
   | Elt
   | Assign
   | Let
+  | OpenBracket
+  | CloseBracket
   deriving (Eq, Show)
 
 instance Display Token where
@@ -41,10 +44,13 @@ instance Display Token where
   disp OpenPth = "("
   disp ClosePth = ")"
   disp Space = " "
+  disp Separator = ";"
   disp Ift = "if"
   disp Elt = "else"
   disp Assign = "="
   disp Let = "let"
+  disp OpenBracket = "{"
+  disp CloseBracket = "}"
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
@@ -69,6 +75,9 @@ lexx xs@(h : _)
     getToken ('*' : tail) = return (Mul, tail)
     getToken ('+' : tail) = return (Add, tail)
     getToken (' ' : tail) = return (Space, tail)
+    getToken ('\n' : tail) = return (Separator, tail)
+    getToken ('\r' : tail) = return (Separator, tail)
+    getToken (';' : tail) = return (Separator, tail)
     getToken ('/' : tail) = return (Div, tail)
     getToken ('-' : tail) = return (Sub, tail)
     getToken ('(' : tail) = return (OpenPth, tail)
@@ -79,6 +88,8 @@ lexx xs@(h : _)
     getToken ('|' : '|' : tail) = return (Or, tail)
     getToken ('!' : tail) = return (Not, tail)
     getToken ('=' : tail) = return (Assign, tail)
+    getToken ('{' : tail) = return (OpenBracket, tail)
+    getToken ('}' : tail) = return (CloseBracket, tail)
     getToken c = Left $ show c <> " is not a valid token"
 
     getIToken :: String -> Either String (Token, String)

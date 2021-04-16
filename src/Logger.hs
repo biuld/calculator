@@ -2,23 +2,25 @@ module Logger where
 
 import Parser
 import Utils
+import Data.Foldable
 
 prettyPrint :: Expr -> IO ()
-prettyPrint e = logST e "" True
+prettyPrint = logST "" True
 
-logST :: Expr -> String -> Bool -> IO ()
-logST (If b l r) indent isLast = printBinaryExpr (disp b) indent isLast l r
-logST (Binary op l r) indent isLast = printBinaryExpr (disp op) indent isLast l r
-logST (Pth e) indent isLast = printUnaryExpr "()" indent isLast e
-logST (Unary op e) indent isLast = printUnaryExpr (disp op) indent isLast e
-logST (Bind n e) indent isLast = printUnaryExpr n indent isLast e
-logST (Name n) indent isLast = putStrLn ""
-logST Unit indent _ = do
+logST :: String -> Bool -> Expr -> IO ()
+logST indent isLast (If b l r) = printBinaryExpr (disp b) indent isLast l r
+logST indent isLast (Binary op l r) = printBinaryExpr (disp op) indent isLast l r
+logST indent isLast (Pth e) = printUnaryExpr "()" indent isLast e
+logST indent isLast (Unary op e) = printUnaryExpr (disp op) indent isLast e
+logST indent isLast (Bind n e) = printUnaryExpr n indent isLast e
+logST indent isLast (Name n) = putStrLn ""
+logST indent _ Unit = do
   putStrLn $ indent <> "└──" <> disp Unit
-logST (Figure i) indent _ = do
+logST indent _ (Figure i) = do
   putStrLn $ indent <> "└──" <> show i
-logST (Boolean b) indent _ = do
+logST indent _ (Boolean b) = do
   putStrLn $ indent <> "└──" <> show b
+logST _ _ (Block es) = traverse_ prettyPrint es
 
 type Indent = String
 
@@ -32,8 +34,8 @@ printBinaryExpr sym indent isLast l r =
       marker = if isLast then "└──" else "├──"
    in do
         putStrLn $ indent <> marker <> sym
-        logST l childIndent False
-        logST r childIndent True
+        logST childIndent False l
+        logST childIndent True r
 
 printUnaryExpr :: Symbol -> Indent -> IsLast -> Expr -> IO ()
 printUnaryExpr sym indent isLast e =
@@ -41,4 +43,4 @@ printUnaryExpr sym indent isLast e =
       marker = if isLast then "└──" else "├──"
    in do
         putStrLn $ indent <> marker <> sym
-        logST e childIndent True
+        logST childIndent True e

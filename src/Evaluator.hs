@@ -29,29 +29,29 @@ eval = do
     Figure i -> return $ Figure i
     Boolean b -> return $ Boolean b
     Unit -> return Unit
-    Pth e -> deduce e c
-    Bind _ e -> deduce e c
+    Pth e -> deduce c e
+    Bind _ e -> deduce c e
     Name n -> do
       Context {_names = names} <- get
       case M.lookup n names of
-        Just e -> deduce e c
+        Just e -> deduce c e
         Nothing -> return Unit
     If b l r -> do
-      bv <- deduce b c
+      bv <- deduce c b
       case bv of
         Boolean bb ->
-          let h = if bb then l else r in deduce h c
+          let h = if bb then l else r in deduce c h
         n -> throwError $ "expected a boolean condition in if expression, got " <> disp n
     Unary op e -> do
-      ev <- deduce e c
+      ev <- deduce c e
       case (op, ev) of
         (Add, Figure i) -> return $ Figure i
         (Sub, Figure i) -> return $ Figure (- i)
         (Not, Boolean b) -> return $ Boolean (not b)
         (t, ee) -> throwError $ unErrMsg t ee
     Binary op l r -> do
-      lv <- deduce l c
-      rv <- deduce r c
+      lv <- deduce c l
+      rv <- deduce c r
       case (op, lv, rv) of
         (Add, Figure li, Figure ri) -> return $ Figure (li + ri)
         (Sub, Figure li, Figure ri) -> return $ Figure (li - ri)
@@ -64,8 +64,9 @@ eval = do
         (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
+    Block es -> last $ fmap (deduce c) es
   where
-    deduce :: Expr -> Context -> Pack Context Expr
-    deduce e c = do
+    deduce :: Context -> Expr -> Pack Context Expr
+    deduce c e = do
       put (c & tree .~ e)
       eval

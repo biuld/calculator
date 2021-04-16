@@ -19,6 +19,7 @@ data Expr
   | If Expr Expr Expr
   | Bind String Expr
   | Name String
+  | Block [Expr]
   deriving (Eq, Show)
 
 instance Display Expr where
@@ -63,7 +64,7 @@ emptyContext = Context [] empty Unit
 
 parse :: Pack Context Expr
 parse = do
-  e <- parseExpr 0
+  e <- parseBlock $ Block []
   c <- get
   put (c & tree .~ e) -- for eval's further use
   return e
@@ -149,6 +150,29 @@ parse = do
             (ClosePth : tail') -> do put (c' & tokens .~ tail'); return e
             [] -> throwError "expected ')', got nothing"
         _ -> parseLiteral
+
+    parseBlock :: Expr -> Pack Context Expr
+    parseBlock p@(Block prior) = do
+      c <- get
+      case c ^. tokens of
+        (OpenBracket : tail) -> do
+          put (c & tokens .~ tail)
+          parseBlock p
+        (Separator : tail) -> do
+          put (c & tokens .~ tail)
+          parseBlock p
+        [CloseBracket] -> return p
+        (CloseBracket : tail) -> do
+          put (c & tokens .~ tail)
+          next <- parseBlock (Block [])
+          case next of
+            Block [] -> return p
+            Block _ -> return $ Block [p, next]
+        [] -> return p
+        tail -> do
+          put (c & tokens .~ tail)
+          e <- parseExpr 0
+          parseBlock $ Block (prior ++ [e])
 
     parseLiteral :: Pack Context Expr
     parseLiteral = do

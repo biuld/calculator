@@ -12,6 +12,11 @@ import Parser
 import System.Console.Haskeline
 import Utils
 
+cal :: String -> Either String Expr
+cal input = do
+  t <- lexx input
+  evalState (runExceptT parse) (emptyContext & tokens .~ t)
+
 main :: IO ()
 main = runInputT settings (loop False emptyContext)
   where
