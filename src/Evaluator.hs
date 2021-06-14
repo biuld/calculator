@@ -64,7 +64,7 @@ eval = do
         (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
-    Block es -> last $ fmap (deduce c) es
+    Tuple es -> Tuple <$> traverse (deduce c) es
   where
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do

@@ -1,5 +1,6 @@
 module Lexer where
 
+import Control.Applicative
 import Data.Char (digitToInt, isDigit, isLetter)
 import Utils
 
@@ -17,15 +18,13 @@ data Token
   | Or
   | Not
   | Space
-  | Separator
   | OpenPth
   | ClosePth
   | Ift
   | Elt
   | Assign
   | Let
-  | OpenBracket
-  | CloseBracket
+  | CommaSep
   deriving (Eq, Show)
 
 instance Display Token where
@@ -44,40 +43,26 @@ instance Display Token where
   disp OpenPth = "("
   disp ClosePth = ")"
   disp Space = " "
-  disp Separator = ";"
   disp Ift = "if"
   disp Elt = "else"
   disp Assign = "="
   disp Let = "let"
-  disp OpenBracket = "{"
-  disp CloseBracket = "}"
+  disp CommaSep = ","
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
-lexx xs@(h : _)
-  | isDigit h = do
-    (token, tail) <- getIToken xs
-    rst <- lexx tail
-    return $ token : rst
-  | isLetter h = do
-    (token, tail) <- getKeywordToken xs
-    rst <- lexx tail
-    return $ token : rst
-  | otherwise = do
-    (token, tail) <- getToken xs
-    case token of
-      Space -> lexx tail
-      _ -> do
-        rst <- lexx tail
-        return $ token : rst
+lexx xs@(h : _) = do
+  (token, tail) <- getIToken xs <|> getKeywordToken xs <|> getToken xs
+  case token of
+    Space -> lexx tail
+    _ -> do
+      rst <- lexx tail
+      return $ token : rst
   where
     getToken :: String -> Either String (Token, String)
     getToken ('*' : tail) = return (Mul, tail)
     getToken ('+' : tail) = return (Add, tail)
     getToken (' ' : tail) = return (Space, tail)
-    getToken ('\n' : tail) = return (Separator, tail)
-    getToken ('\r' : tail) = return (Separator, tail)
-    getToken (';' : tail) = return (Separator, tail)
     getToken ('/' : tail) = return (Div, tail)
     getToken ('-' : tail) = return (Sub, tail)
     getToken ('(' : tail) = return (OpenPth, tail)
@@ -88,21 +73,26 @@ lexx xs@(h : _)
     getToken ('|' : '|' : tail) = return (Or, tail)
     getToken ('!' : tail) = return (Not, tail)
     getToken ('=' : tail) = return (Assign, tail)
-    getToken ('{' : tail) = return (OpenBracket, tail)
-    getToken ('}' : tail) = return (CloseBracket, tail)
+    getToken (',' : tail) = return (CommaSep, tail)
     getToken c = Left $ show c <> " is not a valid token"
 
     getIToken :: String -> Either String (Token, String)
-    getIToken xs =
-      case span isDigit xs of
-        (num, tail) -> return (I $ read num, tail)
+    getIToken [] = Left ""
+    getIToken xs@(h : _)
+      | isDigit h = return (I $ read num, tail)
+      | otherwise = Left ""
+      where
+        (num, tail) = span isDigit xs
 
     getKeywordToken :: String -> Either String (Token, String)
-    getKeywordToken xs =
-      case span isLetter xs of
-        ("true", tail) -> return (B True, tail)
-        ("false", tail) -> return (B False, tail)
-        ("if", tail) -> return (Ift, tail)
-        ("else", tail) -> return (Elt, tail)
-        ("let", tail) -> return (Let, tail)
-        (other, tail) -> return (N other, tail)
+    getKeywordToken [] = Left ""
+    getKeywordToken xs@(h : _)
+      | isLetter h =
+        case span isLetter xs of
+          ("true", tail) -> return (B True, tail)
+          ("false", tail) -> return (B False, tail)
+          ("if", tail) -> return (Ift, tail)
+          ("else", tail) -> return (Elt, tail)
+          ("let", tail) -> return (Let, tail)
+          (other, tail) -> return (N other, tail)
+      | otherwise = Left ""

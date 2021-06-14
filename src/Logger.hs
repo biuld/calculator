@@ -20,7 +20,7 @@ logST indent _ (Figure i) = do
   putStrLn $ indent <> "└──" <> show i
 logST indent _ (Boolean b) = do
   putStrLn $ indent <> "└──" <> show b
-logST _ _ (Block es) = traverse_ prettyPrint es
+logST _ _ (Tuple es) = traverse_ prettyPrint es
 
 type Indent = String
 
