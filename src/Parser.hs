@@ -7,6 +7,7 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.State.Strict (MonadState (get, put), State, runState)
 import Data.List (intercalate)
 import Data.Map.Strict
+import Debug.Trace
 import Lexer
 import Optics
 import Utils
@@ -80,7 +81,7 @@ parse = do
   return e
 
 parseExpr :: Precedence -> Pack Context Expr
-parseExpr p = parseUnary p <|> parseIf <|> parseBind <|> parseFuncDef <|> parseBinary p
+parseExpr p = parseUnary p <|> parseIf <|> parseBind <|> parseFuncCall <|> parseFuncDef <|> parseBinary p
 
 parseIf :: Pack Context Expr
 parseIf = do
@@ -131,6 +132,18 @@ parseFuncDef = do
       case body of
         Group b -> return b
         other -> return [other]
+
+parseFuncCall :: Pack Context Expr
+parseFuncCall = do
+  c <- get
+  case c ^. tokens of
+    (N name : tail@(OpenPth : _)) -> do
+      put (c & tokens .~ tail)
+      param <- parsePth
+      case param of
+        Group p -> return $ FuncCall name p
+        other -> return $ FuncCall name [other]
+    _ -> throwError ""
 
 parseUnary :: Precedence -> Pack Context Expr
 parseUnary p = do

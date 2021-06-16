@@ -12,8 +12,8 @@ import Parser
 import System.Console.Haskeline
 import Utils
 
-cal :: String -> Either String Expr
-cal input = do
+evalHelper :: String -> Either String Expr
+evalHelper input = do
   t <- lexx input
   evalState (runExceptT parse) (emptyContext & tokens .~ t)
 

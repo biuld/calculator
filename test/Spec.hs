@@ -6,64 +6,93 @@ import Optics
 import Parser
 import Test.Hspec (describe, hspec, it, shouldBe)
 
-cal :: String -> Either String Expr
-cal input = do
+evalHelper :: String -> Either String Expr
+evalHelper input = do
   t <- lexx input
   evalState (runExceptT (do parse; eval)) (emptyContext & tokens .~ t)
 
+parseHelper :: String -> Either String Expr
+parseHelper input = do
+  t <- lexx input
+  evalState (runExceptT parse) (emptyContext & tokens .~ t)
+
 main :: IO ()
 main = hspec $ do
-  describe "cal" $ do
+  describe "evalHelper" $ do
     it "1 + 2 + 3 + 4 = 10" $
-      cal "1 + 2 + 3 + 4" `shouldBe` Right (Figure 10)
+      evalHelper "1 + 2 + 3 + 4" `shouldBe` Right (Figure 10)
 
     it "10 - 4 - 3 - 2 - 1 = 0" $
-      cal "10 - 4 - 3 - 2 - 1" `shouldBe` Right (Figure 0)
+      evalHelper "10 - 4 - 3 - 2 - 1" `shouldBe` Right (Figure 0)
 
     it "10 - 4 -  ( 3 - 2 ) - 1 = 4" $
-      cal "10 - 4 - ( 3 - 2 ) - 1" `shouldBe` Right (Figure 4)
+      evalHelper "10 - 4 - ( 3 - 2 ) - 1" `shouldBe` Right (Figure 4)
 
     it "10 - ---4 = 14" $
-      cal "10 - ---4" `shouldBe` Right (Figure 14)
+      evalHelper "10 - ---4" `shouldBe` Right (Figure 14)
 
     it "10 - --4 = 6" $
-      cal "10 - --4" `shouldBe` Right (Figure 6)
+      evalHelper "10 - --4" `shouldBe` Right (Figure 6)
 
     it "10 - ( 4 - 3 - 2 - 1 ) = 12" $
-      cal "10 - ( 4 - 3 - 2 - 1 )" `shouldBe` Right (Figure 12)
+      evalHelper "10 - ( 4 - 3 - 2 - 1 )" `shouldBe` Right (Figure 12)
 
     it "----3 = 3" $
-      cal "----3" `shouldBe` Right (Figure 3)
+      evalHelper "----3" `shouldBe` Right (Figure 3)
 
     it "---3 = -3" $
-      cal "---3" `shouldBe` Right (Figure (-3))
+      evalHelper "---3" `shouldBe` Right (Figure (-3))
 
     it "10 - 4 - 3 == 3" $
-      cal "10 -4 - 3 == 3" `shouldBe` Right (Boolean True)
+      evalHelper "10 -4 - 3 == 3" `shouldBe` Right (Boolean True)
 
     it "10 - 4 - 3 == 0 == false" $
-      cal "10 -4 - 3 == 0 == false" `shouldBe` Right (Boolean True)
+      evalHelper "10 -4 - 3 == 0 == false" `shouldBe` Right (Boolean True)
 
     it "true && false = false" $
-      cal "true && false" `shouldBe` Right (Boolean False)
+      evalHelper "true && false" `shouldBe` Right (Boolean False)
 
     it "true || false = true" $
-      cal "true || false" `shouldBe` Right (Boolean True)
+      evalHelper "true || false" `shouldBe` Right (Boolean True)
 
     it "true && false || true = true" $
-      cal "true && false || true" `shouldBe` Right (Boolean True)
+      evalHelper "true && false || true" `shouldBe` Right (Boolean True)
 
     it "true && false && true = false" $
-      cal "true && false && true" `shouldBe` Right (Boolean False)
+      evalHelper "true && false && true" `shouldBe` Right (Boolean False)
 
     it "true && !false && true = true" $
-      cal "true && !false && true" `shouldBe` Right (Boolean True)
+      evalHelper "true && !false && true" `shouldBe` Right (Boolean True)
 
     it "dangling else" $
-      cal "if true if false 1 else 2" `shouldBe` Right (Figure 2)
+      evalHelper "if true if false 1 else 2" `shouldBe` Right (Figure 2)
 
     it "(1, 2)" $
-      cal "(1, 2)" `shouldBe` Right (Group [Figure 1, Figure 2])
+      evalHelper "(1, 2)" `shouldBe` Right (Group [Figure 1, Figure 2])
 
     it "((1-3)*3, (1, 2))" $
-      cal "((1-3)*3, (1, 2))" `shouldBe` Right (Group [Figure $ -6, Group [Figure 1, Figure 2]])
+      evalHelper "((1-3)*3, (1, 2))" `shouldBe` Right (Group [Figure $ -6, Group [Figure 1, Figure 2]])
+
+    it "def foo(a) {b}" $
+      parseHelper "def foo(a) {b}" `shouldBe` Right (FuncDef "foo" [Name "a"] [Name "b"])
+
+    it "def foo(1) {2}" $
+      parseHelper "def foo(1) {2}" `shouldBe` Right (FuncDef "foo" [Figure 1] [Figure 2])
+
+    it "def foo(a,c) {b;d}" $
+      parseHelper "def foo(a,c) {b;d}" `shouldBe` Right (FuncDef "foo" [Name "a", Name "c"] [Name "b", Name "d"])
+
+    it "def foo(1,3) {2;4}" $
+      parseHelper "def foo(1,3) {2;4}" `shouldBe` Right (FuncDef "foo" [Figure 1, Figure 3] [Figure 2, Figure 4])
+
+    it "foo(a)" $
+      parseHelper "foo(a)" `shouldBe` Right (FuncCall "foo" [Name "a"])
+
+    it "foo(1)" $
+      parseHelper "foo(1)" `shouldBe` Right (FuncCall "foo" [Figure 1])
+
+    it "foo(a,b)" $
+      parseHelper "foo(a,b)" `shouldBe` Right (FuncCall "foo" [Name "a", Name "b"])
+
+    it "foo(1,2)" $
+      parseHelper "foo(1,2)" `shouldBe` Right (FuncCall "foo" [Figure 1, Figure 2])
