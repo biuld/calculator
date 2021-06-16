@@ -1,8 +1,8 @@
 module Logger where
 
+import Data.Foldable
 import Parser
 import Utils
-import Data.Foldable
 
 prettyPrint :: Expr -> IO ()
 prettyPrint = logST "" True
@@ -20,7 +20,8 @@ logST indent _ (Figure i) = do
   putStrLn $ indent <> "└──" <> show i
 logST indent _ (Boolean b) = do
   putStrLn $ indent <> "└──" <> show b
-logST _ _ (Tuple es) = traverse_ prettyPrint es
+logST _ _ (Group es) = traverse_ prettyPrint es
+logST _ _ _ = putStrLn "not implemented"
 
 type Indent = String
 

@@ -21,7 +21,9 @@ data Expr
   | If Expr Expr Expr
   | Bind String Expr
   | Name String
-  | Tuple [Expr]
+  | Group [Expr]
+  | FuncDef String [Expr] [Expr]
+  | FuncCall String [Expr]
   deriving (Eq, Show)
 
 instance Display Expr where
@@ -32,7 +34,7 @@ instance Display Expr where
   disp (Unary op e) = disp op <> " " <> disp e
   disp Unit = "()"
   disp (Name t) = t
-  disp (Tuple es) = "(" <> intercalate ", " (fmap disp es) <> ")"
+  disp (Group es) = "(" <> intercalate ", " (fmap disp es) <> ")"
   disp other = show other
 
 type Precedence = Int
@@ -78,7 +80,7 @@ parse = do
   return e
 
 parseExpr :: Precedence -> Pack Context Expr
-parseExpr p = parseUnary p <|> parseIf <|> parseBind <|> parseBinary p
+parseExpr p = parseUnary p <|> parseIf <|> parseBind <|> parseFuncDef <|> parseBinary p
 
 parseIf :: Pack Context Expr
 parseIf = do
@@ -109,6 +111,27 @@ parseBind = do
       return $ Bind name e
     _ -> throwError ""
 
+parseFuncDef :: Pack Context Expr
+parseFuncDef = do
+  c <- get
+  case c ^. tokens of
+    (Def : N name : tail) -> do
+      put (c & tokens .~ tail)
+      getParameter name
+    _ -> throwError ""
+  where
+    getParameter name = do
+      param <- parsePth
+      case param of
+        Group p -> FuncDef name p <$> getBody
+        other -> FuncDef name [other] <$> getBody
+
+    getBody = do
+      body <- parseBlock
+      case body of
+        Group b -> return b
+        other -> return [other]
+
 parseUnary :: Precedence -> Pack Context Expr
 parseUnary p = do
   c <- get
@@ -123,7 +146,7 @@ parseUnary p = do
 
 parseBinary :: Precedence -> Pack Context Expr
 parseBinary p = do
-  e <- parsePth
+  e <- parsePth <|> parseLiteral
   c <- get
   loop (p, e, c)
   where
@@ -141,31 +164,34 @@ parseBinary p = do
               else return l
       | otherwise = return l
 
-parsePth :: Pack Context Expr
-parsePth = do
+parseGroup :: Token -> Token -> Token -> Pack Context Expr
+parseGroup open close sep = do
   c <- get
   case c ^. tokens of
-    (OpenPth : tail) -> do
+    (open' : tail) | open' == open -> do
       put (c & tokens .~ tail)
       e <- parseExpr 0
       c' <- get
-      case c' ^. tokens of
-        (ClosePth : tail') -> do put (c' & tokens .~ tail'); return e
-        [] -> throwError "expected ')', got nothing"
-        (CommaSep : _) -> parseTuple (e, c')
-        (h : _) -> throwError $ "expected ')', got " <> disp h
-    _ -> parseLiteral
+      group (e, c')
+    _ -> throwError ""
   where
-    parseTuple :: (Expr, Context) -> Pack Context Expr
-    parseTuple (e, c@Context {_tokens = []}) = return e
-    parseTuple (e, c@Context {_tokens = h : tail}) =
-      case h of
-        CommaSep -> do
-          put (c & tokens .~ tail)
-          next <- parseExpr 0
-          c' <- get
-          parseTuple (Tuple [e, next], c')
-        _ -> return e
+    group :: (Expr, Context) -> Pack Context Expr
+    group (e, c@Context {_tokens = []}) = throwError $ "expected '" <> disp close <> "', got nothing"
+    group (e, c@Context {_tokens = h : tail})
+      | h == sep = do
+        put (c & tokens .~ tail)
+        next <- parseExpr 0
+        c' <- get
+        group (Group [e, next], c')
+      | h == close = do put (c & tokens .~ tail); return e
+      | otherwise = case open of
+        OpenBracket -> throwError $ "try to parse a Block, got " <> disp h
+        OpenPth -> throwError $ "try to parse a Tuple, got " <> disp h
+        _ -> throwError $ "try to parse a Group, got " <> disp h
+
+parsePth = parseGroup OpenPth ClosePth CommaSep
+
+parseBlock = parseGroup OpenBracket CloseBracket LineSep
 
 parseLiteral :: Pack Context Expr
 parseLiteral = do

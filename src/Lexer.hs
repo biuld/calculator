@@ -1,7 +1,7 @@
 module Lexer where
 
 import Control.Applicative
-import Data.Char (digitToInt, isDigit, isLetter)
+import Data.Char (GeneralCategory (LineSeparator), digitToInt, isDigit, isLetter)
 import Utils
 
 data Token
@@ -25,6 +25,10 @@ data Token
   | Assign
   | Let
   | CommaSep
+  | LineSep
+  | Def
+  | OpenBracket
+  | CloseBracket
   deriving (Eq, Show)
 
 instance Display Token where
@@ -48,6 +52,10 @@ instance Display Token where
   disp Assign = "="
   disp Let = "let"
   disp CommaSep = ","
+  disp LineSep = ";"
+  disp Def = "def"
+  disp OpenBracket = "{"
+  disp CloseBracket = "}"
 
 lexx :: String -> Either String [Token]
 lexx [] = return []
@@ -74,6 +82,11 @@ lexx xs@(h : _) = do
     getToken ('!' : tail) = return (Not, tail)
     getToken ('=' : tail) = return (Assign, tail)
     getToken (',' : tail) = return (CommaSep, tail)
+    getToken ('\n' : tail) = return (LineSep, tail)
+    getToken ('\r' : tail) = return (LineSep, tail)
+    getToken (';' : tail) = return (LineSep, tail)
+    getToken ('{' : tail) = return (OpenBracket, tail)
+    getToken ('}' : tail) = return (CloseBracket, tail)
     getToken c = Left $ show c <> " is not a valid token"
 
     getIToken :: String -> Either String (Token, String)
@@ -94,5 +107,6 @@ lexx xs@(h : _) = do
           ("if", tail) -> return (Ift, tail)
           ("else", tail) -> return (Elt, tail)
           ("let", tail) -> return (Let, tail)
+          ("def", tail) -> return (Def, tail)
           (other, tail) -> return (N other, tail)
       | otherwise = Left ""

@@ -63,7 +63,7 @@ main = hspec $ do
       cal "if true if false 1 else 2" `shouldBe` Right (Figure 2)
 
     it "(1, 2)" $
-      cal "(1, 2)" `shouldBe` Right (Tuple [Figure 1, Figure 2])
+      cal "(1, 2)" `shouldBe` Right (Group [Figure 1, Figure 2])
 
     it "((1-3)*3, (1, 2))" $
-      cal "((1-3)*3, (1, 2))" `shouldBe` Right (Tuple [Figure $ -6, Tuple [Figure 1, Figure 2]])
+      cal "((1-3)*3, (1, 2))" `shouldBe` Right (Group [Figure $ -6, Group [Figure 1, Figure 2]])

@@ -64,7 +64,8 @@ eval = do
         (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
-    Tuple es -> Tuple <$> traverse (deduce c) es
+    Group es -> Group <$> traverse (deduce c) es
+    _ -> return $ Name "not implemented"
   where
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
