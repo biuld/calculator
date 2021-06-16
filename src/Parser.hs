@@ -103,12 +103,11 @@ parseIf = do
 
 parseBind :: Pack Context Expr
 parseBind = do
-  c@Context {_tokens = t, _names = n} <- get
-  case t of
+  c <- get
+  case c ^. tokens of
     (Let : N name : Assign : tail) -> do
       put (c & tokens .~ tail)
       e <- parseExpr 0
-      put (c & names .~ insert name e n)
       return $ Bind name e
     _ -> throwError ""
 

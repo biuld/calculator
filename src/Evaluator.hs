@@ -2,7 +2,7 @@ module Evaluator where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.Map.Strict as M
+import Data.Map.Strict as M (insert, lookup)
 import Lexer
 import Optics
 import Parser
@@ -30,7 +30,11 @@ eval = do
     Boolean b -> return $ Boolean b
     Unit -> return Unit
     Pth e -> deduce c e
-    Bind _ e -> deduce c e
+    Bind name e -> do
+      c@Context {_names = n} <- get
+      ee <- deduce c e
+      put (c & names .~ M.insert name ee n)
+      return ee
     Name n -> do
       Context {_names = names} <- get
       case M.lookup n names of
@@ -64,10 +68,18 @@ eval = do
         (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
-    Group es -> Group <$> traverse (deduce c) es
+    Group es -> go es c
     _ -> return $ Name "not implemented"
   where
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
       put (c & tree .~ e)
       eval
+
+    go :: [Expr] -> Context -> Pack Context Expr
+    go [] _ = return $ Group []
+    go (h : tail) c = do
+      e' <- deduce c h
+      c' <- get
+      next <- go tail c'
+      let Group n = next in return $ Group (e' : n)
