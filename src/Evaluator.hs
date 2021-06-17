@@ -68,7 +68,7 @@ eval = do
         (And, Boolean lb, Boolean rb) -> return $ Boolean (lb && rb)
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
-    Group es -> go es c
+    Group es -> Group <$> go es c
     f@(FuncDef name _ _) -> do
       c@Context {_names = n} <- get
       put (c & names .~ M.insert name f n)
@@ -79,9 +79,7 @@ eval = do
         Just f@(FuncDef _ param bs) ->
           let n' = n `union` fromList (param `zip` ps)
               c' = emptyContext & names .~ n'
-           in do
-                es <- deduce c' $ Group bs
-                let Group r = es in return $ last r
+           in last <$> go bs c'
         _ -> throwError $ "function " <> name <> " is undefined"
   where
     deduce :: Context -> Expr -> Pack Context Expr
@@ -89,10 +87,10 @@ eval = do
       put (c & tree .~ e)
       eval
 
-    go :: [Expr] -> Context -> Pack Context Expr
-    go [] _ = return $ Group []
+    go :: [Expr] -> Context -> Pack Context [Expr]
+    go [] _ = return []
     go (h : tail) c = do
       e' <- deduce c h
       c' <- get
       next <- go tail c'
-      let Group n = next in return $ Group (e' : n)
+      return $ e' : next
