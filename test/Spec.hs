@@ -11,11 +11,6 @@ evalHelper input = do
   t <- lexx input
   evalState (runExceptT (do parse; eval)) (emptyContext & tokens .~ t)
 
-parseHelper :: String -> Either String Expr
-parseHelper input = do
-  t <- lexx input
-  evalState (runExceptT parse) (emptyContext & tokens .~ t)
-
 main :: IO ()
 main = hspec $ do
   describe "evalHelper" $ do
@@ -73,26 +68,5 @@ main = hspec $ do
     it "((1-3)*3, (1, 2))" $
       evalHelper "((1-3)*3, (1, 2))" `shouldBe` Right (Group [Figure $ -6, Group [Figure 1, Figure 2]])
 
-    it "def foo(a) {b}" $
-      parseHelper "def foo(a) {b}" `shouldBe` Right (FuncDef "foo" [Name "a"] [Name "b"])
-
-    it "def foo(1) {2}" $
-      parseHelper "def foo(1) {2}" `shouldBe` Right (FuncDef "foo" [Figure 1] [Figure 2])
-
-    it "def foo(a,c) {b;d}" $
-      parseHelper "def foo(a,c) {b;d}" `shouldBe` Right (FuncDef "foo" [Name "a", Name "c"] [Name "b", Name "d"])
-
-    it "def foo(1,3) {2;4}" $
-      parseHelper "def foo(1,3) {2;4}" `shouldBe` Right (FuncDef "foo" [Figure 1, Figure 3] [Figure 2, Figure 4])
-
-    it "foo(a)" $
-      parseHelper "foo(a)" `shouldBe` Right (FuncCall "foo" [Name "a"])
-
-    it "foo(1)" $
-      parseHelper "foo(1)" `shouldBe` Right (FuncCall "foo" [Figure 1])
-
-    it "foo(a,b)" $
-      parseHelper "foo(a,b)" `shouldBe` Right (FuncCall "foo" [Name "a", Name "b"])
-
-    it "foo(1,2)" $
-      parseHelper "foo(1,2)" `shouldBe` Right (FuncCall "foo" [Figure 1, Figure 2])
+    it "(def foo(a,b) {a+b}, foo(1,2))" $
+      evalHelper "(def foo(a,b) {a+b}, foo(1,2))" `shouldBe` Right (Group [Unit, Figure 3])

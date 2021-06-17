@@ -23,7 +23,7 @@ data Expr
   | Bind String Expr
   | Name String
   | Group [Expr]
-  | FuncDef String [Expr] [Expr]
+  | FuncDef String [String] [Expr]
   | FuncCall String [Expr]
   deriving (Eq, Show)
 
@@ -70,6 +70,11 @@ data Context = Context
 
 makeLenses ''Context
 
+restore :: [Token] -> Pack Context ()
+restore t = do
+  c <- get
+  put (c & tokens .~ t)
+
 emptyContext :: Context
 emptyContext = Context [] Data.Map.Strict.empty Unit
 
@@ -81,20 +86,26 @@ parse = do
   return e
 
 parseExpr :: Precedence -> Pack Context Expr
-parseExpr p = parseUnary p <|> parseIf <|> parseBind <|> parseFuncCall <|> parseFuncDef <|> parseBinary p
+parseExpr p =
+  parseUnary p
+    <|> parseIf
+    <|> parseBind
+    <|> parseFuncCall
+    <|> parseFuncDef
+    <|> parseBinary p
 
 parseIf :: Pack Context Expr
 parseIf = do
   c <- get
   case c ^. tokens of
     (Ift : tail) -> do
-      put (c & tokens .~ tail)
+      restore tail
       b <- parseExpr 0
       l <- parseExpr 0
       c' <- get
       case c' ^. tokens of
         (Elt : tail') -> do
-          put (c' & tokens .~ tail')
+          restore tail'
           r <- parseExpr 0
           return $ If b l r
         [] -> return $ If b l Unit
@@ -106,7 +117,7 @@ parseBind = do
   c <- get
   case c ^. tokens of
     (Let : N name : Assign : tail) -> do
-      put (c & tokens .~ tail)
+      restore tail
       e <- parseExpr 0
       return $ Bind name e
     _ -> throwError ""
@@ -115,16 +126,22 @@ parseFuncDef :: Pack Context Expr
 parseFuncDef = do
   c <- get
   case c ^. tokens of
-    (Def : N name : tail) -> do
-      put (c & tokens .~ tail)
-      getParameter name
+    t@(Def : N name : OpenPth : N p : tail) -> do
+      restore tail
+      ps <- eatStr [p] t
+      FuncDef name ps <$> getBody
     _ -> throwError ""
   where
-    getParameter name = do
-      param <- parsePth
-      case param of
-        Group p -> FuncDef name p <$> getBody
-        other -> FuncDef name [other] <$> getBody
+    eatStr :: [String] -> [Token] -> Pack Context [String]
+    eatStr ps t = do
+      c <- get
+      case c ^. tokens of
+        (CommaSep : tail) -> restore tail >> eatStr ps t
+        (N n : tail) -> restore tail >> eatStr (ps ++ [n]) t
+        (ClosePth : tail) -> restore tail >> return ps
+        (h : _) ->
+          restore t >> throwError ("illegal function parameter " <> disp h)
+        [] -> restore t >> throwError "illegal eof"
 
     getBody = do
       body <- parseBlock
@@ -137,7 +154,7 @@ parseFuncCall = do
   c <- get
   case c ^. tokens of
     (N name : tail@(OpenPth : _)) -> do
-      put (c & tokens .~ tail)
+      restore tail
       param <- parsePth
       case param of
         Group p -> return $ FuncCall name p
@@ -147,14 +164,16 @@ parseFuncCall = do
 parseUnary :: Precedence -> Pack Context Expr
 parseUnary p = do
   c <- get
-  let (operator : tail) = c ^. tokens
-      precedence = getUnaryOpPrecedence operator
-   in if operator `elem` unOps && precedence >= p
-        then do
-          put (c & tokens .~ tail)
-          operand <- parseExpr precedence
-          return $ Unary operator operand
-        else throwError $ "Error token " <> disp operator
+  case c ^. tokens of
+    (op : tail) | op `elem` unOps -> do
+      let precedence = getUnaryOpPrecedence op
+       in if precedence >= p
+            then do
+              restore tail
+              operand <- parseExpr precedence
+              return $ Unary op operand
+            else throwError $ "Error token " <> disp op
+    _ -> throwError ""
 
 parseBinary :: Precedence -> Pack Context Expr
 parseBinary p = do
@@ -169,7 +188,7 @@ parseBinary p = do
         let p' = getBinaryOpPrecedence op
          in if p' > p
               then do
-                put (c & tokens .~ tail)
+                restore tail
                 r <- parseExpr p'
                 c' <- get
                 loop (0, Binary op l r, c')
@@ -181,7 +200,7 @@ parseGroup open close sep = do
   c <- get
   case c ^. tokens of
     (open' : tail) | open' == open -> do
-      put (c & tokens .~ tail)
+      restore tail
       e <- parseExpr 0
       c' <- get
       group (e, c')
@@ -191,11 +210,11 @@ parseGroup open close sep = do
     group (e, c@Context {_tokens = []}) = throwError $ "expected '" <> disp close <> "', got nothing"
     group (e, c@Context {_tokens = h : tail})
       | h == sep = do
-        put (c & tokens .~ tail)
+        restore tail
         next <- parseExpr 0
         c' <- get
         group (Group [e, next], c')
-      | h == close = do put (c & tokens .~ tail); return e
+      | h == close = restore tail >> return e
       | otherwise = case open of
         OpenBracket -> throwError $ "try to parse a Block, got " <> disp h
         OpenPth -> throwError $ "try to parse a Tuple, got " <> disp h
@@ -209,8 +228,8 @@ parseLiteral :: Pack Context Expr
 parseLiteral = do
   c <- get
   case c ^. tokens of
-    ((I i) : tail) -> do put (c & tokens .~ tail); return $ Figure i
-    ((B b) : tail) -> do put (c & tokens .~ tail); return $ Boolean b
-    ((N n) : tail) -> do put (c & tokens .~ tail); return $ Name n
+    ((I i) : tail) -> restore tail >> return (Figure i)
+    ((B b) : tail) -> restore tail >> return (Boolean b)
+    ((N n) : tail) -> restore tail >> return (Name n)
     (h : _) -> throwError $ "expected literal expression, got " <> disp h
     [] -> throwError "expected literal expression, got nothing"

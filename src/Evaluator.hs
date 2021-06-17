@@ -2,7 +2,7 @@ module Evaluator where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.Map.Strict as M (insert, lookup)
+import Data.Map.Strict as M (fromList, insert, lookup, union)
 import Lexer
 import Optics
 import Parser
@@ -69,7 +69,20 @@ eval = do
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
     Group es -> go es c
-    _ -> return $ Name "not implemented"
+    f@(FuncDef name _ _) -> do
+      c@Context {_names = n} <- get
+      put (c & names .~ M.insert name f n)
+      return Unit
+    FuncCall name ps -> do
+      c@Context {_names = n} <- get
+      case M.lookup name n of
+        Just f@(FuncDef _ param bs) ->
+          let n' = n `union` fromList (param `zip` ps)
+              c' = emptyContext & names .~ n'
+           in do
+                es <- deduce c' $ Group bs
+                let Group r = es in return $ last r
+        _ -> throwError $ "function " <> name <> " is undefined"
   where
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
