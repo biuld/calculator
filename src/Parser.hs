@@ -64,7 +64,8 @@ getBinaryOpPrecedence _ = 0
 data Context = Context
   { _tokens :: [Token],
     _names :: Map String Expr,
-    _tree :: Expr -- the syntax tree
+    _tree :: Expr, -- the syntax tree
+    _parent :: Maybe Context
   }
   deriving (Eq, Show)
 
@@ -76,7 +77,7 @@ restore t = do
   put (c & tokens .~ t)
 
 emptyContext :: Context
-emptyContext = Context [] Data.Map.Strict.empty Unit
+emptyContext = Context [] Data.Map.Strict.empty Unit Nothing
 
 parse :: Pack Context Expr
 parse = do

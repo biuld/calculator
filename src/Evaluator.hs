@@ -2,7 +2,7 @@ module Evaluator where
 
 import Control.Monad.Except
 import Control.Monad.State.Strict
-import Data.Map.Strict as M (fromList, insert, lookup, union)
+import Data.Map.Strict as M (fromList, insert, lookup)
 import Lexer
 import Optics
 import Parser
@@ -35,11 +35,7 @@ eval = do
       ee <- deduce c e
       put (c & names .~ M.insert name ee n)
       return ee
-    Name n -> do
-      Context {_names = names} <- get
-      case M.lookup n names of
-        Just e -> deduce c e
-        Nothing -> return Unit
+    Name n -> return $ search (n, Just c)
     If b l r -> do
       bv <- deduce c b
       case bv of
@@ -76,12 +72,20 @@ eval = do
     FuncCall name ps -> do
       c@Context {_names = n} <- get
       case M.lookup name n of
-        Just f@(FuncDef _ param bs) ->
-          let n' = n `union` fromList (param `zip` ps)
-              c' = emptyContext & names .~ n'
-           in last <$> go bs c'
-        _ -> throwError $ "function " <> name <> " is undefined"
+        Just f@(FuncDef _ param bs)
+          | length param == length ps ->
+            let ns = fromList (param `zip` ps)
+                c' = (emptyContext & parent ?~ c) & names .~ ns
+             in last <$> go bs c'
+        _ -> throwError $ "function " <> name <> show ps <> " is undefined"
   where
+    search :: (String, Maybe Context) -> Expr
+    search (_, Nothing) = Unit
+    search (n, Just c@Context {_names = names, _parent = p}) =
+      case M.lookup n names of
+        Just e -> e
+        Nothing -> search (n, p)
+
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
       put (c & tree .~ e)
