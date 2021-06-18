@@ -7,7 +7,6 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.State.Strict (MonadState (get, put), State, runState)
 import Data.List (intercalate)
 import Data.Map.Strict
-import Debug.Trace
 import Lexer
 import Optics
 import Utils

@@ -65,22 +65,24 @@ eval = do
         (Or, Boolean lb, Boolean rb) -> return $ Boolean (lb || rb)
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
     Group es -> Group <$> go es c
-    f@(FuncDef name _ _) -> do
+    f@(FuncDef name ps _) -> do
       c@Context {_names = n} <- get
-      put (c & names .~ M.insert name f n)
+      put (c & names .~ M.insert (signature name ps) f n)
       return Unit
     FuncCall name ps -> do
       c@Context {_names = n} <- get
-      case M.lookup name n of
-        Just f@(FuncDef _ param bs)
-          | length param == length ps ->
-            let ns = fromList (param `zip` ps)
-                c' = (emptyContext & parent ?~ c) & names .~ ns
-             in last <$> go bs c'
+      case M.lookup (signature name ps) n of
+        Just f@(FuncDef _ param bs) ->
+          let ns = fromList (param `zip` ps)
+              c' = (emptyContext & parent ?~ c) & names .~ ns
+           in last <$> go bs c'
         _ -> throwError $ "function " <> name <> show ps <> " is undefined"
   where
+    signature :: String -> [a] -> String
+    signature name ps = name <> show (length ps)
+
     search :: (String, Maybe Context) -> Expr
-    search (_, Nothing) = Unit
+    search (n, Nothing) = Unit
     search (n, Just c@Context {_names = names, _parent = p}) =
       case M.lookup n names of
         Just e -> e
