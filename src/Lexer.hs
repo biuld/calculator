@@ -57,6 +57,7 @@ instance Display Token where
   disp OpenBracket = "{"
   disp CloseBracket = "}"
 
+-- todo 将换行符和分号分开处理
 lexx :: String -> Either String [Token]
 lexx [] = return []
 lexx xs@(h : _) = do

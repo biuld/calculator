@@ -70,3 +70,6 @@ main = hspec $ do
 
     it "(def foo(a,b) {a+b}, foo(1,2))" $
       evalHelper "(def foo(a,b) {a+b}, foo(1,2))" `shouldBe` Right (Group [Unit, Figure 3])
+
+    it "(def fa(a) { if (a==1) 1 else a*fa(a-1)}, fa(6))" $
+      evalHelper "(def fa(a) { if (a==1) 1 else a*fa(a-1)}, fa(6))" `shouldBe` Right (Group [Unit, Figure 720])

@@ -35,7 +35,7 @@ eval = do
       ee <- deduce c e
       put (c & names .~ M.insert name ee n)
       return ee
-    Name n -> return $ search (n, Just c)
+    Name n -> return $ search (n, c)
     If b l r -> do
       bv <- deduce c b
       case bv of
@@ -70,23 +70,26 @@ eval = do
       put (c & names .~ M.insert (signature name ps) f n)
       return Unit
     FuncCall name ps -> do
+      ps' <- traverse (deduce c) ps
       c@Context {_names = n} <- get
-      case M.lookup (signature name ps) n of
-        Just f@(FuncDef _ param bs) ->
-          let ns = fromList (param `zip` ps)
-              c' = (emptyContext & parent ?~ c) & names .~ ns
+      let fn = signature name ps
+      case search (fn, c) of
+        f@(FuncDef _ param bs) ->
+          let ns = fromList (param `zip` ps')
+              c' = emptyContext & parent ?~ c & names .~ ns
            in last <$> go bs c'
-        _ -> throwError $ "function " <> name <> show ps <> " is undefined"
+        _ -> throwError $ "function " <> fn <> " is undefined"
   where
     signature :: String -> [a] -> String
     signature name ps = name <> show (length ps)
 
-    search :: (String, Maybe Context) -> Expr
-    search (n, Nothing) = Unit
-    search (n, Just c@Context {_names = names, _parent = p}) =
+    search :: (String, Context) -> Expr
+    search (n, Context {_names = names, _parent = p}) =
       case M.lookup n names of
         Just e -> e
-        Nothing -> search (n, p)
+        Nothing -> case p of
+          Just p' -> search (n, p')
+          Nothing -> Unit
 
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
