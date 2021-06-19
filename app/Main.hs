@@ -1,39 +1,15 @@
 module Main where
 
-import Control.Monad.Except
-import Control.Monad.State.Strict
-import Control.Monad.Trans
-import Data.Map
-import Evaluator
-import Lexer
+import Common
 import Logger
-import Optics
-import Parser
+import Control.Monad.Trans
+import Control.Monad
 import System.Console.Haskeline
 import Utils
-
-evalHelper :: String -> Either String Expr
-evalHelper input = do
-  t <- lexx input
-  evalState (runExceptT parse) (emptyContext & tokens .~ t)
 
 main :: IO ()
 main = runInputT settings (loop False emptyContext)
   where
-    cal :: String -> Context -> (Either String Expr, Context)
-    cal input c =
-      case lexx input of
-        Left msg -> (Left msg, c)
-        Right t ->
-          let chain = do
-                tr <- parse
-                r <- eval
-                c <- get
-                put (c & tree .~ tr) -- eval changes tree by default, put tr back for prettyPrint
-                return r
-           in runState (runExceptT chain) (c & tokens .~ t)
-
-    loop :: Bool -> Context -> InputT IO ()
     loop showTree c = do
       minput <- getInputLine "\ESC[1;32m\STXcal> \ESC[0m\STX"
       case fmap trim minput of
@@ -56,11 +32,9 @@ main = runInputT settings (loop False emptyContext)
           outputStrLn $ show c <> "\n"
           loop showTree c
         Just other ->
-          case cal other c of
+          case xd' other c of
             (Left msg, _) -> outputStrLn (msg <> "\n") >> loop showTree c
-            (Right e, c'@Context {_tree = tr}) ->
-              let pp = do
-                    putStrLn $ disp e
-                    when showTree (prettyPrint tr)
-                    putStrLn ""
-               in lift pp >> loop showTree c'
+            (Right v, c'@Context {_tree = e}) -> do
+              outputStrLn $ disp v
+              lift $ when showTree (prettyPrint e)
+              loop showTree c'

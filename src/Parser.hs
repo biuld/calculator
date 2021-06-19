@@ -1,89 +1,18 @@
-{-# LANGUAGE TemplateHaskell #-}
 
 module Parser where
 
 import Control.Applicative
-import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
-import Control.Monad.State.Strict (MonadState (get, put), State, runState)
+import Control.Monad.State.Strict
+import Control.Monad.Except
 import Data.List (intercalate)
-import Data.Map.Strict
-import Lexer
 import Optics
-import Utils
+import Common
 
-data Expr
-  = Figure Int
-  | Boolean Bool
-  | Unit
-  | Pth Expr
-  | Unary Token Expr
-  | Binary Token Expr Expr
-  | If Expr Expr Expr
-  | Bind String Expr
-  | Name String
-  | Group [Expr]
-  | FuncDef String [String] [Expr]
-  | FuncCall String [Expr]
-  deriving (Eq, Show)
-
-instance Display Expr where
-  disp (Figure i) = show i <> " :: Figure"
-  disp (Boolean b) = show b <> " :: Boolean"
-  disp (Pth e) = "( " <> disp e <> " )"
-  disp (Binary op l r) = disp l <> " " <> disp op <> " " <> disp r
-  disp (Unary op e) = disp op <> " " <> disp e
-  disp Unit = "()"
-  disp (Name t) = t
-  disp (Group es) = "(" <> intercalate ", " (fmap disp es) <> ")"
-  disp other = show other
-
-type Precedence = Int
-
-unOps = [Add, Sub, Not]
-
-getUnaryOpPrecedence :: Token -> Precedence
-getUnaryOpPrecedence Add = 6
-getUnaryOpPrecedence Sub = 6
-getUnaryOpPrecedence Not = 6
-getUnaryOpPrecedence _ = 0
-
-binOps = [Add, Sub, Mul, Div, And, Or, Equal, NotEqual]
-
-getBinaryOpPrecedence :: Token -> Precedence
-getBinaryOpPrecedence Mul = 5
-getBinaryOpPrecedence Div = 5
-getBinaryOpPrecedence Add = 4
-getBinaryOpPrecedence Sub = 4
-getBinaryOpPrecedence Equal = 3
-getBinaryOpPrecedence NotEqual = 3
-getBinaryOpPrecedence And = 2
-getBinaryOpPrecedence Or = 1
-getBinaryOpPrecedence _ = 0
-
-data Context = Context
-  { _tokens :: [Token],
-    _names :: Map String Expr,
-    _tree :: Expr, -- the syntax tree
-    _parent :: Maybe Context
-  }
-  deriving (Eq, Show)
-
-makeLenses ''Context
-
-restore :: [Token] -> Pack Context ()
-restore t = do
-  c <- get
-  put (c & tokens .~ t)
-
-emptyContext :: Context
-emptyContext = Context [] Data.Map.Strict.empty Unit Nothing
-
-parse :: Pack Context Expr
+parse :: Pack Context ()
 parse = do
   e <- parseExpr 0
   c <- get
-  put (c & tree .~ e) -- for eval's further use
-  return e
+  put (c & tree .~ e & value .~ e)
 
 parseExpr :: Precedence -> Pack Context Expr
 parseExpr p =

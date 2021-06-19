@@ -1,8 +1,7 @@
 module Logger where
 
 import Data.Foldable
-import Parser
-import Utils
+import Common
 
 prettyPrint :: Expr -> IO ()
 prettyPrint = logST "" True

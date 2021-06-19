@@ -1,12 +1,10 @@
 module Evaluator where
 
+import Common
 import Control.Monad.Except
 import Control.Monad.State.Strict
 import Data.Map.Strict as M (fromList, insert, lookup)
-import Lexer
 import Optics
-import Parser
-import Utils
 
 binErrMsg :: Token -> Expr -> Expr -> String
 binErrMsg op l r =
@@ -24,8 +22,8 @@ unErrMsg op e =
 
 eval :: Pack Context Expr
 eval = do
-  c@Context {_tree = tr} <- get
-  case tr of
+  c <- get
+  case c ^. value of
     Figure i -> return $ Figure i
     Boolean b -> return $ Boolean b
     Unit -> return Unit
@@ -93,7 +91,7 @@ eval = do
 
     deduce :: Context -> Expr -> Pack Context Expr
     deduce c e = do
-      put (c & tree .~ e)
+      put (c & value .~ e)
       eval
 
     go :: [Expr] -> Context -> Pack Context [Expr]
