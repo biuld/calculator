@@ -1,18 +1,30 @@
-
 module Parser where
 
+import Common
 import Control.Applicative
-import Control.Monad.State.Strict
 import Control.Monad.Except
+import Control.Monad.State.Strict
 import Data.List (intercalate)
 import Optics
-import Common
 
 parse :: Pack Context ()
 parse = do
   e <- parseExpr 0
   c <- get
   put (c & tree .~ e & value .~ e)
+
+parseF :: Pack Context ()
+parseF = do
+  c <- get
+  loop c []
+  where
+    loop :: Context -> [Expr] -> Pack Context ()
+    loop c es = case c ^. tokens of
+      [] -> let e = Group es in put (c & tree .~ e & value .~ e)
+      _ -> do
+        e <- parseExpr 0
+        c <- get
+        loop c (es ++ [e])
 
 parseExpr :: Precedence -> Pack Context Expr
 parseExpr p =

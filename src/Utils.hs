@@ -12,11 +12,11 @@ import System.Console.Haskeline
 
 chain input = lexx input >> parse >> eval
 
-xd :: String -> Either String Expr
-xd input = evalState (runExceptT $ chain input) emptyContext
+xd input = runState (runExceptT $ chain input)
 
-xd' :: [Char] -> Context -> (Either String Expr, Context)
-xd' input = runState (runExceptT $ chain input)
+xdF input = runState (runExceptT $ lexx input >> parseF >> eval)
+
+xdP input = evalState (runExceptT $ chain input) emptyContext
 
 trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace
