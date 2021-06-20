@@ -31,7 +31,6 @@ parseExpr p =
   parseUnary p
     <|> parseIf
     <|> parseBind
-    <|> parseFuncCall
     <|> parseFuncDef
     <|> parseBinary p
 
@@ -171,6 +170,7 @@ parseLiteral = do
   case c ^. tokens of
     ((I i) : tail) -> restore tail >> return (Figure i)
     ((B b) : tail) -> restore tail >> return (Boolean b)
+    ((N _) : OpenPth : _) -> parseFuncCall
     ((N n) : tail) -> restore tail >> return (Name n)
     (h : _) -> throwError $ "expected literal expression, got " <> disp h
     [] -> throwError "expected literal expression, got nothing"

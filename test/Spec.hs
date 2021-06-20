@@ -1,7 +1,7 @@
 import Common
-import Utils
-import Test.Hspec (describe, hspec, it, shouldBe)
 import Control.Monad.Trans
+import Test.Hspec (describe, hspec, it, shouldBe)
+import Utils
 
 main :: IO ()
 main = hspec $ do
@@ -62,6 +62,9 @@ main = hspec $ do
 
     it "(def foo(a,b) {a+b}, foo(1,2))" $
       xdP "(def foo(a,b) {a+b}, foo(1,2))" `shouldBe` Right (Group [Unit, Figure 3])
+
+    it "(def foo(a) {a}, foo(1)+foo(1))" $
+      xdP "(def foo(a) {a}, foo(1)+foo(1))" `shouldBe` Right (Group [Unit, Figure 2])
 
     it "(def fa(a) { if (a==1) 1 else a*fa(a-1)}, fa(6))" $
       xdP "(def fa(a) { if (a==1) 1 else a*fa(a-1)}, fa(6))" `shouldBe` Right (Group [Unit, Figure 720])
