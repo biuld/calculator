@@ -65,5 +65,6 @@ getKeywordToken xs@(h : _)
       ("else", tail) -> return (Elt, tail)
       ("let", tail) -> return (Let, tail)
       ("def", tail) -> return (Def, tail)
+      ("return", tail) -> return (Ret, tail)
       (other, tail) -> return (N other, tail)
   | otherwise = throwError ""

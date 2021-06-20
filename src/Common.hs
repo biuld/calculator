@@ -33,6 +33,7 @@ data Token
   | Def
   | OpenBracket
   | CloseBracket
+  | Ret
   deriving (Eq, Show)
 
 type Precedence = Int
@@ -71,6 +72,7 @@ data Expr
   | Group [Expr]
   | FuncDef String [String] [Expr]
   | FuncCall String [Expr]
+  | Return Expr
   deriving (Eq, Show)
 
 class Show a => Display a where
@@ -102,6 +104,7 @@ instance Display Token where
   disp Def = "def"
   disp OpenBracket = "{"
   disp CloseBracket = "}"
+  disp Ret = "return"
 
 instance Display Expr where
   disp (Figure i) = show i <> " :: Figure"
@@ -112,6 +115,7 @@ instance Display Expr where
   disp Unit = "()"
   disp (Name t) = t
   disp (Group es) = "(" <> intercalate ", " (fmap disp es) <> ")"
+  disp (Return e) = "Return " <> disp e
   disp other = show other
 
 data Context = Context

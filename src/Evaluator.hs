@@ -28,6 +28,7 @@ eval = do
     Boolean b -> return $ Boolean b
     Unit -> return Unit
     Pth e -> deduce c e
+    Return e -> Return <$> deduce c e
     Bind name e -> do
       c@Context {_names = n} <- get
       ee <- deduce c e
@@ -69,7 +70,7 @@ eval = do
       return Unit
     FuncCall name ps -> do
       ps' <- traverse (deduce c) ps
-      c@Context {_names = n} <- get
+      c <- get
       let fn = signature name ps
       case search (fn, c) of
         f@(FuncDef _ param bs) ->
@@ -97,7 +98,10 @@ eval = do
     go :: [Expr] -> Context -> Pack Context [Expr]
     go [] _ = return []
     go (h : tail) c = do
-      e' <- deduce c h
-      c' <- get
-      next <- go tail c'
-      return $ e' : next
+      e <- deduce c h
+      case e of
+        Return e' -> return [e']
+        _ -> do
+          c' <- get
+          next <- go tail c'
+          return $ e : next

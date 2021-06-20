@@ -29,6 +29,7 @@ parseF = do
 parseExpr :: Precedence -> Pack Context Expr
 parseExpr p =
   parseUnary p
+    <|> parseReturn
     <|> parseIf
     <|> parseBind
     <|> parseFuncDef
@@ -48,8 +49,7 @@ parseIf = do
           restore tail'
           r <- parseExpr 0
           return $ If b l r
-        [] -> return $ If b l Unit
-        (h : _) -> throwError $ "expected else token, got " <> disp h
+        _ -> return $ If b l Unit
     _ -> throwError ""
 
 parseBind :: Pack Context Expr
@@ -143,18 +143,23 @@ parseGroup open close sep = do
       restore tail
       e <- parseExpr 0
       c' <- get
-      group (e, c')
+      wrap <$> group ([e], c')
     _ -> throwError ""
   where
-    group :: (Expr, Context) -> Pack Context Expr
-    group (e, c@Context {_tokens = []}) = throwError $ "expected '" <> disp close <> "', got nothing"
-    group (e, c@Context {_tokens = h : tail})
+    wrap :: [Expr] -> Expr
+    wrap es
+      | length es == 1 = head es
+      | otherwise = Group es
+
+    group :: ([Expr], Context) -> Pack Context [Expr]
+    group (es, c@Context {_tokens = []}) = throwError $ "expected '" <> disp close <> "', got nothing"
+    group (es, c@Context {_tokens = h : tail})
       | h == sep = do
         restore tail
         next <- parseExpr 0
         c' <- get
-        group (Group [e, next], c')
-      | h == close = restore tail >> return e
+        group (es ++ [next], c')
+      | h == close = restore tail >> return es
       | otherwise = case open of
         OpenBracket -> throwError $ "try to parse a Block, got " <> disp h
         OpenPth -> throwError $ "try to parse a Tuple, got " <> disp h
@@ -163,6 +168,16 @@ parseGroup open close sep = do
 parsePth = parseGroup OpenPth ClosePth CommaSep
 
 parseBlock = parseGroup OpenBracket CloseBracket LineSep
+
+parseReturn :: Pack Context Expr
+parseReturn = do
+  c <- get
+  case c ^. tokens of
+    (Ret : tail) -> do
+      restore tail
+      e <- parseExpr 0
+      return $ Return e
+    _ -> throwError ""
 
 parseLiteral :: Pack Context Expr
 parseLiteral = do
