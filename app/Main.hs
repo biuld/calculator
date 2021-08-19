@@ -4,13 +4,14 @@ import Common
 import Control.Monad
 import Control.Monad.Trans
 import Logger
+import Optics
 import System.Console.Haskeline
 import Utils
 
 main :: IO ()
 main = runInputT settings (loop False emptyContext)
   where
-    cal s c showTree fn = case fn s c of
+    cal s c showTree fn = case fn (c & raw .~ s) of
       (Left msg, _) -> outputStrLn (msg <> "\n") >> loop showTree c
       (Right v, c'@Context {_tree = e}) -> do
         outputStrLn $ disp v

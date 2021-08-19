@@ -7,18 +7,18 @@ import Control.Monad.State.Strict
 import Data.List (intercalate)
 import Optics
 
-parse :: Pack Context ()
+parse :: App ()
 parse = do
   e <- parseExpr 0
   c <- get
   put (c & tree .~ e & value .~ e)
 
-parseF :: Pack Context ()
+parseF :: App ()
 parseF = do
   c <- get
   loop c []
   where
-    loop :: Context -> [Expr] -> Pack Context ()
+    loop :: Context -> [Expr] -> App ()
     loop c es = case c ^. tokens of
       [] -> let e = Group es in put (c & tree .~ e & value .~ e)
       _ -> do
@@ -26,7 +26,7 @@ parseF = do
         c <- get
         loop c (es ++ [e])
 
-parseExpr :: Precedence -> Pack Context Expr
+parseExpr :: Precedence -> App Expr
 parseExpr p =
   parseUnary p
     <|> parseReturn
@@ -35,7 +35,7 @@ parseExpr p =
     <|> parseFuncDef
     <|> parseBinary p
 
-parseIf :: Pack Context Expr
+parseIf :: App Expr
 parseIf = do
   c <- get
   case c ^. tokens of
@@ -52,7 +52,7 @@ parseIf = do
         _ -> return $ If b l Unit
     _ -> throwError ""
 
-parseBind :: Pack Context Expr
+parseBind :: App Expr
 parseBind = do
   c <- get
   case c ^. tokens of
@@ -62,7 +62,7 @@ parseBind = do
       return $ Bind name e
     _ -> throwError ""
 
-parseFuncDef :: Pack Context Expr
+parseFuncDef :: App Expr
 parseFuncDef = do
   c <- get
   case c ^. tokens of
@@ -72,7 +72,7 @@ parseFuncDef = do
       FuncDef name ps <$> getBody
     _ -> throwError ""
   where
-    eatStr :: [String] -> [Token] -> Pack Context [String]
+    eatStr :: [String] -> [Token] -> App [String]
     eatStr ps t = do
       c <- get
       case c ^. tokens of
@@ -89,7 +89,7 @@ parseFuncDef = do
         Group b -> return b
         other -> return [other]
 
-parseFuncCall :: Pack Context Expr
+parseFuncCall :: App Expr
 parseFuncCall = do
   c <- get
   case c ^. tokens of
@@ -101,7 +101,7 @@ parseFuncCall = do
         other -> return $ FuncCall name [other]
     _ -> throwError ""
 
-parseUnary :: Precedence -> Pack Context Expr
+parseUnary :: Precedence -> App Expr
 parseUnary p = do
   c <- get
   case c ^. tokens of
@@ -115,13 +115,13 @@ parseUnary p = do
             else throwError $ "Error token " <> disp op
     _ -> throwError ""
 
-parseBinary :: Precedence -> Pack Context Expr
+parseBinary :: Precedence -> App Expr
 parseBinary p = do
   e <- parsePth <|> parseLiteral
   c <- get
   loop (p, e, c)
   where
-    loop :: (Precedence, Expr, Context) -> Pack Context Expr
+    loop :: (Precedence, Expr, Context) -> App Expr
     loop (_, e, Context {_tokens = []}) = return e
     loop (p, l, c@Context {_tokens = op : tail})
       | op `elem` binOps =
@@ -135,7 +135,7 @@ parseBinary p = do
               else return l
       | otherwise = return l
 
-parseGroup :: Token -> Token -> Token -> Pack Context Expr
+parseGroup :: Token -> Token -> Token -> App Expr
 parseGroup open close sep = do
   c <- get
   case c ^. tokens of
@@ -151,7 +151,7 @@ parseGroup open close sep = do
       | length es == 1 = head es
       | otherwise = Group es
 
-    group :: ([Expr], Context) -> Pack Context [Expr]
+    group :: ([Expr], Context) -> App [Expr]
     group (es, c@Context {_tokens = []}) = throwError $ "expected '" <> disp close <> "', got nothing"
     group (es, c@Context {_tokens = h : tail})
       | h == sep = do
@@ -169,7 +169,7 @@ parsePth = parseGroup OpenPth ClosePth CommaSep
 
 parseBlock = parseGroup OpenBracket CloseBracket LineSep
 
-parseReturn :: Pack Context Expr
+parseReturn :: App Expr
 parseReturn = do
   c <- get
   case c ^. tokens of
@@ -179,7 +179,7 @@ parseReturn = do
       return $ Return e
     _ -> throwError ""
 
-parseLiteral :: Pack Context Expr
+parseLiteral :: App Expr
 parseLiteral = do
   c <- get
   case c ^. tokens of

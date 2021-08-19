@@ -9,14 +9,15 @@ import Evaluator
 import Lexer
 import Parser
 import System.Console.Haskeline
+import Optics
 
-chain input = lexx input >> parse >> eval
+chain p = lexx >> p >> eval
 
-xd input = runState (runExceptT $ chain input)
+xd = runState (runExceptT $ chain parse)
 
-xdF input = runState (runExceptT $ lexx input >> parseF >> eval)
+xdF = runState (runExceptT $ chain parseF)
 
-xdP input = evalState (runExceptT $ chain input) emptyContext
+xdP input = evalState (runExceptT $ chain parse) (emptyContext & tokens .~ input)
 
 trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace

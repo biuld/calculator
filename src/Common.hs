@@ -119,7 +119,8 @@ instance Display Expr where
   disp other = show other
 
 data Context = Context
-  { _tokens :: [Token],
+  { _raw :: String,
+    _tokens :: [Token],
     _names :: Map String Expr,
     _tree :: Expr,
     _value :: Expr,
@@ -129,12 +130,12 @@ data Context = Context
 
 makeLenses ''Context
 
-type Pack a b = ExceptT String (State a) b
+type App a = ExceptT String (State Context) a
 
-restore :: [Token] -> Pack Context ()
+restore :: [Token] -> App ()
 restore t = do
   c <- get
   put (c & tokens .~ t)
 
 emptyContext :: Context
-emptyContext = Context [] Data.Map.Strict.empty Unit Unit Nothing
+emptyContext = Context [] mempty Data.Map.Strict.empty Unit Unit Nothing

@@ -7,13 +7,13 @@ import Control.Monad.State.Strict
 import Data.Char (isDigit, isLetter)
 import Optics
 
-lexx :: String -> Pack Context ()
-lexx input = do
-  c <- get
+lexx :: App ()
+lexx = do
+  c@Context {_raw = input} <- get
   t <- loop input
   put (c & tokens .~ t)
 
-loop :: String -> Pack Context [Token]
+loop :: String -> App [Token]
 loop [] = return []
 loop xs@(h : _) = do
   (token, tail) <- getIToken xs <|> getKeywordToken xs <|> getToken xs
@@ -23,7 +23,7 @@ loop xs@(h : _) = do
       rst <- loop tail
       return $ token : rst
 
-getToken :: String -> Pack Context (Token, String)
+getToken :: String -> App (Token, String)
 getToken ('*' : tail) = return (Mul, tail)
 getToken ('+' : tail) = return (Add, tail)
 getToken (' ' : tail) = return (Space, tail)
@@ -46,7 +46,7 @@ getToken ('{' : tail) = return (OpenBracket, tail)
 getToken ('}' : tail) = return (CloseBracket, tail)
 getToken c = throwError $ show c <> " is not a valid token"
 
-getIToken :: String -> Pack Context (Token, String)
+getIToken :: String -> App (Token, String)
 getIToken [] = throwError ""
 getIToken xs@(h : _)
   | isDigit h = return (I $ read num, tail)
@@ -54,7 +54,7 @@ getIToken xs@(h : _)
   where
     (num, tail) = span isDigit xs
 
-getKeywordToken :: String -> Pack Context (Token, String)
+getKeywordToken :: String -> App (Token, String)
 getKeywordToken [] = throwError ""
 getKeywordToken xs@(h : _)
   | isLetter h =

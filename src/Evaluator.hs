@@ -20,7 +20,7 @@ unErrMsg op e =
     <> " is not defined for "
     <> disp e
 
-eval :: Pack Context Expr
+eval :: App Expr
 eval = do
   c <- get
   case c ^. value of
@@ -90,12 +90,12 @@ eval = do
           Just p' -> search (n, p')
           Nothing -> Unit
 
-    deduce :: Context -> Expr -> Pack Context Expr
+    deduce :: Context -> Expr -> App Expr
     deduce c e = do
       put (c & value .~ e)
       eval
 
-    go :: [Expr] -> Context -> Pack Context [Expr]
+    go :: [Expr] -> Context -> App [Expr]
     go [] _ = return []
     go (h : tail) c = do
       e <- deduce c h
