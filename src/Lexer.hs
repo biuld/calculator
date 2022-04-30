@@ -5,13 +5,12 @@ import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.State.Strict
 import Data.Char (isDigit, isLetter)
-import Optics
 
 lexx :: App ()
 lexx = do
-  c@Context {_raw = input} <- get
+  c@Context {raw = input} <- get
   t <- loop input
-  put (c & tokens .~ t)
+  put (c {tokens = t})
 
 loop :: String -> App [Token]
 loop [] = return []

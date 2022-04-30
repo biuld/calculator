@@ -1,10 +1,11 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Evaluator where
 
 import Common
 import Control.Monad.Except
 import Control.Monad.State.Strict
 import Data.Map.Strict as M (fromList, insert, lookup)
-import Optics
 
 binErrMsg :: Token -> Expr -> Expr -> String
 binErrMsg op l r =
@@ -23,16 +24,16 @@ unErrMsg op e =
 eval :: App Expr
 eval = do
   c <- get
-  case c ^. value of
+  case c.value of
     Figure i -> return $ Figure i
     Boolean b -> return $ Boolean b
     Unit -> return Unit
     Pth e -> deduce c e
     Return e -> Return <$> deduce c e
     Bind name e -> do
-      c@Context {_names = n} <- get
+      c@Context{names = n} <- get
       ee <- deduce c e
-      put (c & names .~ M.insert name ee n)
+      put (c{names = M.insert name ee n})
       return ee
     Name n -> return $ search (n, c)
     If b l r -> do
@@ -45,7 +46,7 @@ eval = do
       ev <- deduce c e
       case (op, ev) of
         (Add, Figure i) -> return $ Figure i
-        (Sub, Figure i) -> return $ Figure (- i)
+        (Sub, Figure i) -> return $ Figure (-i)
         (Not, Boolean b) -> return $ Boolean (not b)
         (t, ee) -> throwError $ unErrMsg t ee
     Binary op l r -> do
@@ -65,8 +66,8 @@ eval = do
         (t, ll, rr) -> throwError $ binErrMsg t ll rr
     Group es -> Group <$> go es c
     f@(FuncDef name ps _) -> do
-      c@Context {_names = n} <- get
-      put (c & names .~ M.insert (signature name ps) f n)
+      c@Context{names = n} <- get
+      put (c{names = M.insert (signature name ps) f n})
       return Unit
     FuncCall name ps -> do
       ps' <- traverse (deduce c) ps
@@ -75,33 +76,33 @@ eval = do
       case search (fn, c) of
         f@(FuncDef _ param bs) ->
           let ns = fromList (param `zip` ps')
-              c' = emptyContext & parent ?~ c & names .~ ns
+              c' = emptyContext{parent = Just $ c{names = ns}}
            in last <$> go bs c'
         _ -> throwError $ "function " <> fn <> " is undefined"
-  where
-    signature :: String -> [a] -> String
-    signature name ps = name <> show (length ps)
+ where
+  signature :: String -> [a] -> String
+  signature name ps = name <> show (length ps)
 
-    search :: (String, Context) -> Expr
-    search (n, Context {_names = names, _parent = p}) =
-      case M.lookup n names of
-        Just e -> e
-        Nothing -> case p of
-          Just p' -> search (n, p')
-          Nothing -> Unit
+  search :: (String, Context) -> Expr
+  search (n, Context{names = names, parent = p}) =
+    case M.lookup n names of
+      Just e -> e
+      Nothing -> case p of
+        Just p' -> search (n, p')
+        Nothing -> Unit
 
-    deduce :: Context -> Expr -> App Expr
-    deduce c e = do
-      put (c & value .~ e)
-      eval
+  deduce :: Context -> Expr -> App Expr
+  deduce c e = do
+    put (c{value = e})
+    eval
 
-    go :: [Expr] -> Context -> App [Expr]
-    go [] _ = return []
-    go (h : tail) c = do
-      e <- deduce c h
-      case e of
-        Return e' -> return [e']
-        _ -> do
-          c' <- get
-          next <- go tail c'
-          return $ e : next
+  go :: [Expr] -> Context -> App [Expr]
+  go [] _ = return []
+  go (h : tail) c = do
+    e <- deduce c h
+    case e of
+      Return e' -> return [e']
+      _ -> do
+        c' <- get
+        next <- go tail c'
+        return $ e : next

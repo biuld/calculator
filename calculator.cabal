@@ -1,0 +1,75 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           calculator
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/biuld/calculator#readme>
+homepage:       https://github.com/biuld/calculator#readme
+bug-reports:    https://github.com/biuld/calculator/issues
+author:         biu
+maintainer:     xboltk@gmail.com
+copyright:      2020 biu
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/biuld/calculator
+
+library
+  exposed-modules:
+      Common
+      Evaluator
+      Lexer
+      Logger
+      Parser
+      Utils
+  other-modules:
+      Paths_calculator
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , haskeline
+    , mtl
+  default-language: Haskell2010
+
+executable calculator-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_calculator
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , calculator
+    , containers
+    , haskeline
+    , mtl
+  default-language: Haskell2010
+
+test-suite calculator-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_calculator
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , calculator
+    , containers
+    , haskeline
+    , hspec
+    , mtl
+  default-language: Haskell2010

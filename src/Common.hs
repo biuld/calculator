@@ -1,12 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Common where
 
 import Control.Monad.Except (ExceptT)
 import Control.Monad.State.Strict (MonadState (get, put), State)
 import Data.List (intercalate)
 import Data.Map.Strict (Map, empty)
-import Optics (makeLenses, (&), (.~))
 
 data Token
   = I Int
@@ -119,23 +116,21 @@ instance Display Expr where
   disp other = show other
 
 data Context = Context
-  { _raw :: String,
-    _tokens :: [Token],
-    _names :: Map String Expr,
-    _tree :: Expr,
-    _value :: Expr,
-    _parent :: Maybe Context
+  { raw :: String,
+    tokens :: [Token],
+    names :: Map String Expr,
+    tree :: Expr,
+    value :: Expr,
+    parent :: Maybe Context
   }
   deriving (Eq, Show)
-
-makeLenses ''Context
 
 type App a = ExceptT String (State Context) a
 
 restore :: [Token] -> App ()
 restore t = do
   c <- get
-  put (c & tokens .~ t)
+  put (c {tokens = t})
 
 emptyContext :: Context
-emptyContext = Context [] mempty Data.Map.Strict.empty Unit Unit Nothing
+emptyContext = Context [] mempty empty Unit Unit Nothing
