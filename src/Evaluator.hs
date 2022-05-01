@@ -76,7 +76,7 @@ eval = do
       case search (fn, c) of
         f@(FuncDef _ param bs) ->
           let ns = fromList (param `zip` ps')
-              c' = emptyContext{parent = Just $ c{names = ns}}
+              c' = emptyContext{parent = Just $ c, names = ns}
            in last <$> go bs c'
         _ -> throwError $ "function " <> fn <> " is undefined"
  where

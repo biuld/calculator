@@ -16,7 +16,7 @@ xd = runState (runExceptT $ chain parse)
 
 xdF = runState (runExceptT $ chain parseF)
 
-xdP input = evalState (runExceptT $ chain parse) (emptyContext{tokens = input})
+xdP input = evalState (runExceptT $ chain parse) (emptyContext{raw = input})
 
 trim :: String -> String
 trim = dropWhileEnd isSpace . dropWhile isSpace
