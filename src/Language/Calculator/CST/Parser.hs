@@ -1,9 +1,9 @@
 module Language.Calculator.CST.Parser (stm) where
 
 import Language.Calculator.CST.Lexer
-import Text.Megaparsec
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
+import Text.Megaparsec
 
 exprApp :: Parser Expr
 exprApp = do
@@ -12,15 +12,14 @@ exprApp = do
 
 exprAtom :: Parser Expr
 exprAtom =
-    lexeme $
-        choice
-            [ ExprInt <$> tokInteger
-            , ExprDouble <$> try tokDouble
-            , ExprBool <$> tokBool
-            , ExprIdent <$> tokIdent
-            , ExprString <$> tokString
-            , exprApp
-            ]
+    choice
+        [ ExprInt <$> tokInteger
+        , ExprDouble <$> try tokDouble
+        , ExprBool <$> tokBool
+        , ExprString <$> tokString
+        , exprIdent
+        , exprApp
+        ]
 
 exprUnary :: Parser Expr
 exprUnary = do
@@ -28,11 +27,12 @@ exprUnary = do
     ExprUnary op <$> expr
 
 exprBinary :: Parser Expr
-exprBinary = pth <|> do
-    l <- literal
-    op <- binOps
-    r <- literal
-    rest op l r <|> return (ExprBinary op l r)
+exprBinary =
+    pth <|> do
+        l <- literal
+        op <- binOps
+        r <- literal
+        rest op l r <|> return (ExprBinary op l r)
   where
     rest op l r = do
         op' <- binOps
@@ -41,7 +41,7 @@ exprBinary = pth <|> do
             then return $ ExprBinary op' (ExprBinary op l r) e
             else return $ ExprBinary op l (ExprBinary op' r e)
 
-    binOps = tokAdd <|> tokSub <|> tokMul <|> tokDiv <|> tokAnd <|> tokOr <|> tokNot
+    binOps = tokAdd <|> tokSub <|> tokMul <|> tokDiv <|> tokAnd <|> tokOr <|> tokNot <|> tokEqual <|> tokNotEqual
 
     pth = wrapped '(' ')' expr
 
@@ -81,13 +81,13 @@ exprTuple = ExprTuple <$> wrapped '(' ')' inner
         return (h : t)
 
 exprIdent :: Parser Expr
-exprIdent = ExprIdent <$> tokIdent
+exprIdent = ExprIdent <$> try tokIdent
 
 exprBind :: Parser Expr
 exprBind = do
     keyword "let"
     ident <- tokIdent
-    _ <- tokEqual
+    tokChar '='
     ExprBind ident <$> expr
 
 expr :: Parser Expr

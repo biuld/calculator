@@ -1,15 +1,18 @@
 module Language.Calculator.CST.Utils (
   Parser,
-  lexeme
+  lexeme,
+  unexpected,
 ) where
 
+import Data.List.NonEmpty qualified as NE
 import Data.Text
 import Data.Void
-import Text.Megaparsec
+import Text.Megaparsec qualified as M
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
+import Text.Megaparsec.Error (ErrorItem (Tokens))
 
-type Parser = Parsec Void Text
+type Parser = M.Parsec Void Text
 
 skipSpace :: Parser ()
 skipSpace =
@@ -20,3 +23,6 @@ skipSpace =
 
 lexeme :: forall a. Parser a -> Parser a
 lexeme = L.lexeme skipSpace
+
+unexpected :: forall a. String -> Parser a
+unexpected s = M.unexpected $ Tokens (NE.fromList s)

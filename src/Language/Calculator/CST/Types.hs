@@ -1,9 +1,10 @@
 module Language.Calculator.CST.Types (
-  Operator(..),
-  Expr(..),
-  Ident
-  ,Statement(..)
-  , ge
+  Operator (..),
+  Expr (..),
+  Ident,
+  Statement (..),
+  ge,
+  keywords
 ) where
 
 import Data.Text
@@ -34,7 +35,6 @@ getOpPrecedence Not = 4
 ge :: Operator -> Operator -> Bool
 ge op1 op2 = getOpPrecedence op1 >= getOpPrecedence op2
 
-
 type Ident = Text
 
 data Expr
@@ -57,3 +57,6 @@ data Statement
   | StmFor Expr Expr Expr [Statement]
   | StmE Expr
   deriving (Eq, Show)
+
+keywords :: [String]
+keywords = ["if", "else", "let", "for", "while"]

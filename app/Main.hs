@@ -1,4 +1,4 @@
-module Main where
+module Main (module Main) where
 
-
+main :: a
 main = undefined
