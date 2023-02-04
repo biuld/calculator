@@ -1,4 +1,4 @@
-module Language.Calculator.CST.Parser where
+module Language.Calculator.CST.Parser (stm) where
 
 import Language.Calculator.CST.Lexer
 import Text.Megaparsec
@@ -32,12 +32,12 @@ exprBinary = pth <|> do
     l <- literal
     op <- binOps
     r <- literal
-    tail op l r <|> return (ExprBinary op l r)
+    rest op l r <|> return (ExprBinary op l r)
   where
-    tail op l r = do
+    rest op l r = do
         op' <- binOps
         e <- expr
-        if op > op'
+        if op `ge` op'
             then return $ ExprBinary op' (ExprBinary op l r) e
             else return $ ExprBinary op l (ExprBinary op' r e)
 
@@ -58,15 +58,17 @@ wrapped open close m = do
 separated :: forall a b. Parser b -> Char -> Char -> Parser a -> Parser [a]
 separated sep open close m = wrapped open close inner
   where
-    inner = try tail <|> return []
+    inner = try rest <|> return []
 
-    tail = do
+    rest = do
         h <- m
         t <- many $ sep >> m
         return (h : t)
 
+tuple :: Parser a -> Parser [a]
 tuple = separated (tokChar ',') '(' ')'
 
+block :: Parser a -> Parser [a]
 block = separated (tokChar ';') '{' '}'
 
 -- as least contains two elements
@@ -85,12 +87,13 @@ exprBind :: Parser Expr
 exprBind = do
     keyword "let"
     ident <- tokIdent
-    tokEqual
+    _ <- tokEqual
     ExprBind ident <$> expr
 
 expr :: Parser Expr
 expr = exprUnary <|> try exprBinary <|> try exprTuple <|> exprApp <|> exprIdent <|> exprBind <|> exprAtom
 
+stmBlock :: Parser [Statement]
 stmBlock = block stm
 
 stmAbs :: Parser Statement
@@ -119,13 +122,13 @@ stmFor :: Parser Statement
 stmFor = do
     keyword "for"
     tokChar '('
-    init <- expr
+    initE <- expr
     tokChar ';'
     condition <- expr
     tokChar ';'
     increment <- expr
     tokChar ')'
-    StmFor init condition increment <$> stmBlock
+    StmFor initE condition increment <$> stmBlock
 
 stmE :: Parser Statement
 stmE = StmE <$> expr

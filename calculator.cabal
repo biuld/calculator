@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -9,15 +9,15 @@ version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/biuld/calculator#readme>
 homepage:       https://github.com/biuld/calculator#readme
 bug-reports:    https://github.com/biuld/calculator/issues
-author:         biu
+author:         biuld
 maintainer:     xboltk@gmail.com
-copyright:      2020 biu
+copyright:      2023 biuld here
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
+    CHANGELOG.md
 
 source-repository head
   type: git
@@ -26,22 +26,20 @@ source-repository head
 library
   exposed-modules:
       Language.Calculator.CST
-  other-modules:
-      Language.Calculator.CST.Parser
       Language.Calculator.CST.Lexer
+      Language.Calculator.CST.Parser
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
+  other-modules:
+      Paths_calculator
   hs-source-dirs:
       src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -XOverloadedStrings -XGHC2021
   build-depends:
       base >=4.7 && <5
-    , containers
-    , haskeline
-    , mtl
     , megaparsec
     , text
-  default-language: GHC2021
-  default-extensions: OverloadedStrings 
+  default-language: Haskell2010
 
 executable calculator-exe
   main-is: Main.hs
@@ -49,14 +47,13 @@ executable calculator-exe
       Paths_calculator
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -XOverloadedStrings -XGHC2021 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , calculator
-    , containers
-    , haskeline
-    , mtl
-  default-language: GHC2021
+    , megaparsec
+    , text
+  default-language: Haskell2010
 
 test-suite calculator-test
   type: exitcode-stdio-1.0
@@ -65,12 +62,10 @@ test-suite calculator-test
       Paths_calculator
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -XOverloadedStrings -XGHC2021 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , calculator
-    , containers
-    , haskeline
-    , hspec
-    , mtl
-  default-language: GHC2021
+    , megaparsec
+    , text
+  default-language: Haskell2010

@@ -1,4 +1,10 @@
-module Language.Calculator.CST.Types where
+module Language.Calculator.CST.Types (
+  Operator(..),
+  Expr(..),
+  Ident
+  ,Statement(..)
+  , ge
+) where
 
 import Data.Text
 
@@ -14,23 +20,20 @@ data Operator
   | Not
   deriving (Eq, Show)
 
-instance Ord Operator where
-  Add <= Sub = True
-  Sub <= Add = True
-  Add <= Mul = True
-  Div <= Mul = True
-  Mul <= Div = True
+getOpPrecedence :: Operator -> Int
+getOpPrecedence Add = 1
+getOpPrecedence Sub = 1
+getOpPrecedence Div = 2
+getOpPrecedence Mul = 2
+getOpPrecedence Equal = 0
+getOpPrecedence NotEqual = 0
+getOpPrecedence And = 3
+getOpPrecedence Or = 3
+getOpPrecedence Not = 4
 
-  Mul <= And = True
+ge :: Operator -> Operator -> Bool
+ge op1 op2 = getOpPrecedence op1 >= getOpPrecedence op2
 
-  And <= Or = True
-  Or <= And = True
-  And <= Not = True
-
-  Equal <= NotEqual = True
-  NotEqual <= Equal = True
-  Equal <= Add = True
-  Equal <= And = True
 
 type Ident = Text
 

@@ -1,9 +1,13 @@
-module Language.Calculator.CST.Utils where
-import Text.Megaparsec
-import Data.Void
+module Language.Calculator.CST.Utils (
+  Parser,
+  lexeme
+) where
+
 import Data.Text
-import qualified Text.Megaparsec.Char.Lexer as L
+import Data.Void
+import Text.Megaparsec
 import Text.Megaparsec.Char
+import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = Parsec Void Text
 
@@ -14,4 +18,5 @@ skipSpace =
     (L.skipLineComment "//")
     (L.skipBlockCommentNested "/*" "*/")
 
+lexeme :: forall a. Parser a -> Parser a
 lexeme = L.lexeme skipSpace

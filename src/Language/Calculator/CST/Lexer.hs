@@ -1,13 +1,15 @@
-module Language.Calculator.CST.Lexer where
+module Language.Calculator.CST.Lexer (
+  module Language.Calculator.CST.Lexer,
+) where
 
 import Data.Functor (void, ($>))
 import Data.Text
 import Data.Text qualified as T
-import Text.Megaparsec (choice, label, many, manyTill, single, try, (<|>))
-import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
-import Text.Megaparsec.Char.Lexer qualified as L
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
+import Text.Megaparsec (label, many, manyTill, (<|>))
+import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
+import Text.Megaparsec.Char.Lexer qualified as L
 
 tokInteger :: Parser Integer
 tokInteger = label "integer" L.decimal
