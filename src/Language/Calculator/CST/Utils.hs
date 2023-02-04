@@ -1,4 +1,4 @@
-module Utils where
+module Language.Calculator.CST.Utils where
 import Text.Megaparsec
 import Data.Void
 import Data.Text

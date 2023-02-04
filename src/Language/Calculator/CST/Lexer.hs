@@ -1,13 +1,13 @@
-module Lexer where
+module Language.Calculator.CST.Lexer where
 
-import CST
 import Data.Functor (void, ($>))
+import Data.Text
 import Data.Text qualified as T
-import Text.Megaparsec (choice, label, many, single, try, (<|>))
+import Text.Megaparsec (choice, label, many, manyTill, single, try, (<|>))
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
 import Text.Megaparsec.Char.Lexer qualified as L
-import Utils
-import Data.Text
+import Language.Calculator.CST.Types
+import Language.Calculator.CST.Utils
 
 tokInteger :: Parser Integer
 tokInteger = label "integer" L.decimal
@@ -20,6 +20,9 @@ tokBool =
   label "boolean" bool
  where
   bool = string "true" $> True <|> string "false" $> False
+
+tokString :: Parser T.Text
+tokString = char '"' >> T.pack <$> manyTill L.charLiteral (char '"')
 
 tokIdent :: Parser T.Text
 tokIdent = label "identifier" $ do

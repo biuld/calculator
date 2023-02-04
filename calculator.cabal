@@ -25,13 +25,12 @@ source-repository head
 
 library
   exposed-modules:
-      CST
-      Lexer
-      Logger
-      Parser
-      Utils
+      Language.Calculator.CST
   other-modules:
-      Paths_calculator
+      Language.Calculator.CST.Parser
+      Language.Calculator.CST.Lexer
+      Language.Calculator.CST.Types
+      Language.Calculator.CST.Utils
   hs-source-dirs:
       src
   build-depends:
