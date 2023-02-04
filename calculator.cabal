@@ -25,8 +25,7 @@ source-repository head
 
 library
   exposed-modules:
-      Common
-      Evaluator
+      CST
       Lexer
       Logger
       Parser
@@ -40,7 +39,10 @@ library
     , containers
     , haskeline
     , mtl
+    , megaparsec
+    , text
   default-language: GHC2021
+  default-extensions: OverloadedStrings 
 
 executable calculator-exe
   main-is: Main.hs

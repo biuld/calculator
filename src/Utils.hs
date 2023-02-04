@@ -1,32 +1,17 @@
 module Utils where
+import Text.Megaparsec
+import Data.Void
+import Data.Text
+import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Megaparsec.Char
 
-import Common
-import Control.Monad.Except
-import Control.Monad.State.Strict
-import Data.Char
-import Data.List
-import Evaluator
-import Lexer
-import Parser
-import System.Console.Haskeline
+type Parser = Parsec Void Text
 
-chain p = lexx >> p >> eval
+skipSpace :: Parser ()
+skipSpace =
+  L.space
+    space1
+    (L.skipLineComment "//")
+    (L.skipBlockCommentNested "/*" "*/")
 
-xd = runState (runExceptT $ chain parse)
-
-xdF = runState (runExceptT $ chain parseF)
-
-xdP input = evalState (runExceptT $ chain parse) (emptyContext{raw = input})
-
-trim :: String -> String
-trim = dropWhileEnd isSpace . dropWhile isSpace
-
-options = [":enableAST", ":disableAST", ":help", ":quit", ":context", ":read"]
-
-searchFunc :: String -> [Completion]
-searchFunc str = map simpleCompletion $ filter (str `isPrefixOf`) options
-
-settings :: Settings IO
-settings =
-  let c = completeWord Nothing " \t" $ return . searchFunc
-   in setComplete c defaultSettings
+lexeme = L.lexeme skipSpace

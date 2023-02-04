@@ -1,69 +1,61 @@
 module Lexer where
 
-import Common
-import Control.Applicative
-import Control.Monad.Except
-import Control.Monad.State.Strict
-import Data.Char (isDigit, isLetter)
+import CST
+import Data.Functor (void, ($>))
+import Data.Text qualified as T
+import Text.Megaparsec (choice, label, many, single, try, (<|>))
+import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
+import Text.Megaparsec.Char.Lexer qualified as L
+import Utils
+import Data.Text
 
-lexx :: App ()
-lexx = do
-  c@Context {raw = input} <- get
-  t <- loop input
-  put (c {tokens = t})
+tokInteger :: Parser Integer
+tokInteger = label "integer" L.decimal
 
-loop :: String -> App [Token]
-loop [] = return []
-loop xs@(h : _) = do
-  (token, tail) <- getIToken xs <|> getKeywordToken xs <|> getToken xs
-  case token of
-    Space -> loop tail
-    _ -> do
-      rst <- loop tail
-      return $ token : rst
+tokDouble :: Parser Double
+tokDouble = label "double" L.float
 
-getToken :: String -> App (Token, String)
-getToken ('*' : tail) = return (Mul, tail)
-getToken ('+' : tail) = return (Add, tail)
-getToken (' ' : tail) = return (Space, tail)
-getToken ('/' : tail) = return (Div, tail)
-getToken ('-' : tail) = return (Sub, tail)
-getToken ('(' : tail) = return (OpenPth, tail)
-getToken (')' : tail) = return (ClosePth, tail)
-getToken ('=' : '=' : tail) = return (Equal, tail)
-getToken ('!' : '=' : tail) = return (NotEqual, tail)
-getToken ('&' : '&' : tail) = return (And, tail)
-getToken ('|' : '|' : tail) = return (Or, tail)
-getToken ('!' : tail) = return (Not, tail)
-getToken ('=' : tail) = return (Assign, tail)
-getToken (',' : tail) = return (CommaSep, tail)
-getToken ('\n' : tail) = return (Space, tail)
-getToken ('\r' : tail) = return (Space, tail)
-getToken ('\t' : tail) = return (Space, tail)
-getToken (';' : tail) = return (LineSep, tail)
-getToken ('{' : tail) = return (OpenBracket, tail)
-getToken ('}' : tail) = return (CloseBracket, tail)
-getToken c = throwError $ show c <> " is not a valid token"
+tokBool :: Parser Bool
+tokBool =
+  label "boolean" bool
+ where
+  bool = string "true" $> True <|> string "false" $> False
 
-getIToken :: String -> App (Token, String)
-getIToken [] = throwError ""
-getIToken xs@(h : _)
-  | isDigit h = return (I $ read num, tail)
-  | otherwise = throwError ""
-  where
-    (num, tail) = span isDigit xs
+tokIdent :: Parser T.Text
+tokIdent = label "identifier" $ do
+  first <- letterChar <|> char '_'
+  rest <- many alphaNumChar
+  return . T.pack $ first : rest
 
-getKeywordToken :: String -> App (Token, String)
-getKeywordToken [] = throwError ""
-getKeywordToken xs@(h : _)
-  | isLetter h =
-    case span isLetter xs of
-      ("true", tail) -> return (B True, tail)
-      ("false", tail) -> return (B False, tail)
-      ("if", tail) -> return (Ift, tail)
-      ("else", tail) -> return (Elt, tail)
-      ("let", tail) -> return (Let, tail)
-      ("def", tail) -> return (Def, tail)
-      ("return", tail) -> return (Ret, tail)
-      (other, tail) -> return (N other, tail)
-  | otherwise = throwError ""
+tokAdd :: Parser Operator
+tokAdd = Add <$ lexeme (char '+')
+
+tokSub :: Parser Operator
+tokSub = Sub <$ lexeme (char '-')
+
+tokDiv :: Parser Operator
+tokDiv = Div <$ lexeme (char '/')
+
+tokMul :: Parser Operator
+tokMul = Mul <$ lexeme (char '*')
+
+tokEqual :: Parser Operator
+tokEqual = Equal <$ lexeme (char '=')
+
+tokNotEqual :: Parser Operator
+tokNotEqual = NotEqual <$ lexeme (string "!=")
+
+tokAnd :: Parser Operator
+tokAnd = And <$ lexeme (string "&&")
+
+tokOr :: Parser Operator
+tokOr = Or <$ lexeme (string "||")
+
+tokNot :: Parser Operator
+tokNot = Not <$ lexeme (char '!')
+
+tokChar :: Char -> Parser ()
+tokChar c = void . lexeme $ char c
+
+keyword :: Text -> Parser ()
+keyword s = void . lexeme $ string s
