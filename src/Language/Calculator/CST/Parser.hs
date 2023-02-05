@@ -1,9 +1,13 @@
-module Language.Calculator.CST.Parser (stm) where
+module Language.Calculator.CST.Parser (
+    module Language.Calculator.CST.Parser
+) where
 
 import Language.Calculator.CST.Lexer
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
 import Text.Megaparsec
+import Data.Text
+import Data.Void
 
 exprApp :: Parser Expr
 exprApp = do
@@ -135,3 +139,6 @@ stmE = StmE <$> expr
 
 stm :: Parser Statement
 stm = stmAbs <|> stmIfElse <|> stmWhile <|> stmFor <|> stmE
+
+parseStm :: Text -> Either (ParseErrorBundle Text Void) Statement
+parseStm = run stm

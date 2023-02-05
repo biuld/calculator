@@ -2,9 +2,9 @@ name:                calculator
 version:             0.1.0.0
 github:              "biuld/calculator"
 license:             BSD3
-author:              "biuld"
+author:              "biu"
 maintainer:          "xboltk@gmail.com"
-copyright:           "2023 biuld here"
+copyright:           "2023 biu here"
 
 extra-source-files:
 - README.md
@@ -34,8 +34,10 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
-- -XOverloadedStrings
-- -XGHC2021
+
+default-extensions:
+  - OverloadedStrings
+default-language: GHC2021
 
 library:
   source-dirs: src
@@ -61,3 +63,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - calculator
+    - hspec

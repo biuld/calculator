@@ -1,4 +1,4 @@
 module Main (module Main) where
 
-main :: a
-main = undefined
+main :: IO ()
+main = putStrLn "hello, calculator"

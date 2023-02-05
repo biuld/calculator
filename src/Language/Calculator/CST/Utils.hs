@@ -2,6 +2,7 @@ module Language.Calculator.CST.Utils (
   Parser,
   lexeme,
   unexpected,
+  run
 ) where
 
 import Data.List.NonEmpty qualified as NE
@@ -26,3 +27,6 @@ lexeme = L.lexeme skipSpace
 
 unexpected :: forall a. String -> Parser a
 unexpected s = M.unexpected $ Tokens (NE.fromList s)
+
+run :: forall a. Parser a -> Text -> Either (M.ParseErrorBundle Text Void) a
+run m = M.runParser m ""
