@@ -1,2 +1,1 @@
-module Language.Calculator.CST (
-    ) where
+module Language.Calculator.CST () where

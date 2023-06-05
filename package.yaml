@@ -37,7 +37,7 @@ ghc-options:
 
 default-extensions:
   - OverloadedStrings
-default-language: GHC2021
+language: GHC2021
 
 library:
   source-dirs: src
