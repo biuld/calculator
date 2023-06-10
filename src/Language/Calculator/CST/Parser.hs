@@ -1,13 +1,13 @@
 module Language.Calculator.CST.Parser (
-    module Language.Calculator.CST.Parser
+    module Language.Calculator.CST.Parser,
 ) where
 
+import Data.Text
+import Data.Void
 import Language.Calculator.CST.Lexer
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
 import Text.Megaparsec
-import Data.Text
-import Data.Void
 
 exprApp :: Parser Expr
 exprApp = do
@@ -17,8 +17,8 @@ exprApp = do
 exprAtom :: Parser Expr
 exprAtom =
     choice
-        [ ExprInt <$> tokInteger
-        , ExprDouble <$> try tokDouble
+        [ ExprDouble <$> try tokDouble
+        , ExprInt <$> tokInteger
         , ExprBool <$> tokBool
         , ExprString <$> tokString
         , exprIdent
@@ -27,7 +27,7 @@ exprAtom =
 
 exprUnary :: Parser Expr
 exprUnary = do
-    op <- tokAdd <|> tokSub
+    op <- tokOperator "+" <|> tokOperator "-"
     ExprUnary op <$> expr
 
 exprBinary :: Parser Expr
@@ -41,11 +41,11 @@ exprBinary =
     rest op l r = do
         op' <- binOps
         e <- expr
-        if op `ge` op'
+        if op.tokValue `ge` op'.tokValue
             then return $ ExprBinary op' (ExprBinary op l r) e
             else return $ ExprBinary op l (ExprBinary op' r e)
 
-    binOps = tokAdd <|> tokSub <|> tokMul <|> tokDiv <|> tokAnd <|> tokOr <|> tokNot <|> tokEqual <|> tokNotEqual
+    binOps = choice $ tokOperator <$> ["+", "-", "*", "/", "==", "!=", "&&", "||"]
 
     pth = wrapped '(' ')' expr
 
