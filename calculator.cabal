@@ -28,6 +28,7 @@ library
       Language.Calculator.CST
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
+      Language.Calculator.CST.Printer
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
   other-modules:

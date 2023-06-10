@@ -11,7 +11,7 @@ import Text.Megaparsec
 
 exprApp :: Parser Expr
 exprApp = do
-    ident <- exprIdent
+    ident <- tokIdent
     ExprApp ident <$> tuple expr
 
 exprAtom :: Parser Expr
@@ -95,7 +95,7 @@ exprBind = do
     ExprBind ident <$> expr
 
 expr :: Parser Expr
-expr = exprUnary <|> try exprBinary <|> try exprTuple <|> exprApp <|> exprIdent <|> exprBind <|> exprAtom
+expr = exprUnary <|> try exprBinary <|> try exprTuple <|> try exprApp <|> exprIdent <|> exprBind <|> exprAtom
 
 stmBlock :: Parser [Statement]
 stmBlock = block stm

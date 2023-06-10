@@ -4,6 +4,7 @@ module Language.Calculator.CST.Utils (
   unexpected,
   run,
   withPos,
+  runTotal
 ) where
 
 import Data.List.NonEmpty qualified as NE
@@ -33,6 +34,12 @@ unexpected s = M.unexpected $ Tokens (NE.fromList s)
 
 run :: forall a. Parser a -> Text -> Either (M.ParseErrorBundle Text Void) a
 run m = M.runParser m ""
+
+runTotal :: forall a. Parser a -> Text -> a
+runTotal m input = case run m input of
+  Right a -> a
+  _ -> undefined
+
 
 withPos :: forall a. Parser a -> Parser (SourceToken a)
 withPos m = do

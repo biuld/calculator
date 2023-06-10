@@ -1,5 +1,5 @@
 module Language.Calculator.CST.Types (
-  Operator (..),
+  Operator,
   Expr (..),
   Ident,
   Statement (..),
@@ -11,18 +11,6 @@ module Language.Calculator.CST.Types (
 
 import Data.Text
 import Text.Megaparsec
-
--- data Operator
---   = Add
---   | Mul
---   | Div
---   | Sub
---   | Equal
---   | NotEqual
---   | And
---   | Or
---   | Not
---   deriving (Eq, Show)
 
 getOpPrecedence :: Operator -> OperatorPrecedence
 getOpPrecedence "+" = 1
@@ -55,7 +43,7 @@ data Expr
   | ExprUnary (SourceToken Operator) Expr
   | ExprBinary (SourceToken Operator) Expr Expr
   | ExprBind (SourceToken Ident) Expr
-  | ExprApp Expr [Expr]
+  | ExprApp (SourceToken Ident) [Expr]
   deriving (Eq, Show)
 
 data SourceRange = SourceRange
