@@ -3,6 +3,7 @@ module Language.Calculator.CST.Printer where
 import Language.Calculator.CST.Types
 
 start = "├──"
+vb = "│"
 end = "└──"
 
 format :: forall a. Show a => Int -> String -> a -> String
@@ -21,7 +22,7 @@ pprintExpr depth sign e = case e of
     (ExprUnary (SourceToken _ op) e1) ->
         putStrLn (format depth sign op) >> pprintExpr (depth + 1) sign e1
     (ExprBinary (SourceToken _ op) e1 e2) ->
-        putStrLn (format depth sign op) >> pprintExpr (depth + 1) sign e1 >> pprintExpr (depth + 1) sign e2
+        putStrLn (format depth sign op) >> pprintExpr (depth + 1) start e1 >> pprintExpr (depth + 1) end e2
     (ExprBind (SourceToken _ i) e1) ->
         putStrLn (format depth sign "ABS") >> putStrLn (format (depth + 1) sign i) >> pprintExpr (depth + 1) sign e1
     (ExprApp (SourceToken _ i) es) -> 
