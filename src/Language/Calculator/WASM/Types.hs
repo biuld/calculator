@@ -1,8 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE StandaloneDeriving #-}
-
-
 module Language.Calculator.WASM.Types where
 
 import Data.Int
@@ -17,16 +12,18 @@ data Inst where
 deriving instance Show Inst
 deriving instance Eq Inst
 
+type Id = String
+
 data Func = Func
-    { id :: String
+    { id :: Id
     , ty :: ([ValType], [ValType])
     , body :: [Inst]
     }
     deriving (Eq, Show)
 
 data Module = Module
-    { id :: Maybe String
+    { id :: Maybe Id
     , func :: [Func]
-    , start :: Maybe Func
+    , start :: Maybe Id
     }
     deriving (Eq, Show)

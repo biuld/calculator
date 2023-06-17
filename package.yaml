@@ -38,6 +38,8 @@ ghc-options:
 default-extensions:
   - OverloadedStrings
   - OverloadedRecordDot
+  - StandaloneDeriving
+  - DuplicateRecordFields
 language: GHC2021
 
 library:

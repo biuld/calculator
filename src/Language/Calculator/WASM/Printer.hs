@@ -41,8 +41,14 @@ instance Wat Func where
             wrapBlank ["func", i, p, r, b]
 
 instance Wat Module where
-    wat (Module _ f _) =
+    wat m =
         let
-            fs = fmap wat f
+            i = case m.id of
+                Just id -> "$" <> id
+                Nothing -> []
+            start = case m.start of
+                Just id -> wrapBlank ["start", "$" <> id]
+                Nothing -> []
+            fs = join "" $ fmap wat m.func
          in
-            wrapBlank $ "module" : fs
+            wrapBlank [x | x <- ["module", i, fs, start], not $ null x]
