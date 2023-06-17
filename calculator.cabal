@@ -31,6 +31,8 @@ library
       Language.Calculator.CST.Printer
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
+      Language.Calculator.WASM.Printer
+      Language.Calculator.WASM.Types
   other-modules:
       Paths_calculator
   hs-source-dirs:
