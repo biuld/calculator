@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -28,14 +28,20 @@ library
       Language.Calculator.CST
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
+      Language.Calculator.CST.Printer
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
+      Language.Calculator.WASM.Printer
+      Language.Calculator.WASM.Types
   other-modules:
       Paths_calculator
   hs-source-dirs:
       src
   default-extensions:
       OverloadedStrings
+      OverloadedRecordDot
+      StandaloneDeriving
+      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -51,6 +57,9 @@ executable calculator-exe
       app
   default-extensions:
       OverloadedStrings
+      OverloadedRecordDot
+      StandaloneDeriving
+      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -70,6 +79,9 @@ test-suite calculator-test
       test
   default-extensions:
       OverloadedStrings
+      OverloadedRecordDot
+      StandaloneDeriving
+      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5

@@ -10,62 +10,38 @@ import Text.Megaparsec (label, many, manyTill, (<|>))
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
 import Text.Megaparsec.Char.Lexer qualified as L
 
-
-tokInteger :: Parser Integer
+tokInteger :: Parser (SourceToken Integer)
 tokInteger = label "integer" . lexeme $ L.decimal
 
-tokDouble :: Parser Double
+tokDouble :: Parser (SourceToken Double)
 tokDouble = label "double" . lexeme $ L.float
 
-tokBool :: Parser Bool
+tokBool :: Parser (SourceToken Bool)
 tokBool =
   label "boolean" . lexeme $ bool
  where
   bool = string "true" $> True <|> string "false" $> False
 
-tokString :: Parser T.Text
+tokString :: Parser (SourceToken T.Text)
 tokString = label "string" . lexeme $ str
  where
   str = char '"' >> T.pack <$> manyTill L.charLiteral (char '"')
 
-tokIdent :: Parser T.Text
+tokIdent :: Parser (SourceToken T.Text)
 tokIdent = label "identifier" . lexeme $ identifier
  where
   identifier :: Parser T.Text
-  identifier = T.pack <$> do
-    first <- letterChar <|> char '_'
-    rest <- many alphaNumChar
-    let ident = first : rest
-    if ident `elem` keywords
-      then unexpected ("keyword " <> ident)
-      else return ident
+  identifier =
+    T.pack <$> do
+      first <- letterChar <|> char '_'
+      rest <- many alphaNumChar
+      let ident = first : rest
+      if ident `elem` keywords
+        then unexpected ("keyword " <> ident)
+        else return ident
 
-tokAdd :: Parser Operator
-tokAdd = Add <$ lexeme (char '+')
-
-tokSub :: Parser Operator
-tokSub = Sub <$ lexeme (char '-')
-
-tokDiv :: Parser Operator
-tokDiv = Div <$ lexeme (char '/')
-
-tokMul :: Parser Operator
-tokMul = Mul <$ lexeme (char '*')
-
-tokEqual :: Parser Operator
-tokEqual = Equal <$ lexeme (string "==")
-
-tokNotEqual :: Parser Operator
-tokNotEqual = NotEqual <$ lexeme (string "!=")
-
-tokAnd :: Parser Operator
-tokAnd = And <$ lexeme (string "&&")
-
-tokOr :: Parser Operator
-tokOr = Or <$ lexeme (string "||")
-
-tokNot :: Parser Operator
-tokNot = Not <$ lexeme (char '!')
+tokOperator :: T.Text -> Parser (SourceToken Operator)
+tokOperator t = lexeme $ string t
 
 tokChar :: Char -> Parser ()
 tokChar c = void . lexeme $ char c
