@@ -11,12 +11,12 @@ data TypedExpr where
 -- The main desugaring function that converts CST to a type-checked AST.
 desugar :: TypeEnv -> CST.Expr -> Either TypeError TypedExpr
 desugar env cstExpr = case cstExpr of
-  CST.ExprInt t -> Right $ TypedExpr SInt (ExprInt $ CST.tokValue t)
-  CST.ExprDouble t -> Right $ TypedExpr SDouble (ExprDouble $ CST.tokValue t)
-  CST.ExprBool t -> Right $ TypedExpr SBool (ExprBool $ CST.tokValue t)
-  CST.ExprString t -> Right $ TypedExpr SString (ExprString $ CST.tokValue t)
+  CST.ExprInt t -> Right $ TypedExpr SInt (ExprInt t.tokValue)
+  CST.ExprDouble t -> Right $ TypedExpr SDouble (ExprDouble t.tokValue)
+  CST.ExprBool t -> Right $ TypedExpr SBool (ExprBool t.tokValue)
+  CST.ExprString t -> Right $ TypedExpr SString (ExprString t.tokValue)
 
-  CST.ExprIdent t -> let name = CST.tokValue t in
+  CST.ExprIdent t -> let name = t.tokValue in
     case Map.lookup name env of
       Nothing -> Left $ UnboundVariable name
       Just TInt -> Right $ TypedExpr SInt (ExprIdent name)
@@ -28,7 +28,7 @@ desugar env cstExpr = case cstExpr of
 
   CST.ExprUnary opToken cstE -> do
     TypedExpr sty e <- desugar env cstE
-    let op = CST.tokValue opToken
+    let op = opToken.tokValue
     case (op, sty) of
       (CST.OpNot, SBool) -> Right $ TypedExpr SBool (ExprUnary OpNot e)
       (CST.OpMinus, SDouble) -> Right $ TypedExpr SDouble (ExprUnary OpMinus e)
@@ -38,7 +38,7 @@ desugar env cstExpr = case cstExpr of
   CST.ExprBinary opToken cstE1 cstE2 -> do
     TypedExpr sty1 e1 <- desugar env cstE1
     TypedExpr sty2 e2 <- desugar env cstE2
-    let op = CST.tokValue opToken
+    let op = opToken.tokValue
     case testEquality sty1 sty2 of
       Nothing -> Left $ TypeMismatch (fromSTy sty1) (fromSTy sty2)
       Just Refl -> case (op, sty1) of
