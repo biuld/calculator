@@ -44,6 +44,7 @@ term =
         , pIf
         , pWhile
         , pBlock
+        , pLambda
         , ExprDouble <$> try tokDouble
         , ExprInt <$> tokInteger
         , ExprBool <$> tokBool
@@ -143,6 +144,35 @@ pLet = do
     keyword "in"
     body <- expr
     return $ ExprLet name value body
+
+-- Parse lambda expression
+pLambda :: Parser Expr
+pLambda = try parseMultiParamLambda <|> parseSingleParamLambda
+  where
+    parseMultiParamLambda = do
+        tokChar '\\'
+        params <- many parseParam
+        tokChar '-'
+        tokChar '>'
+        body <- expr
+        return $ ExprLambda params body
+
+    parseSingleParamLambda = do
+        tokChar '\\'
+        param <- parseParam
+        tokChar '-'
+        tokChar '>'
+        body <- expr
+        return $ ExprLambda [param] body
+
+    parseParam = do
+        start <- getSourcePos
+        param <- tokIdent
+        ty <- optional $ do
+            tokChar ':'
+            ExprIdent <$> tokIdent
+        end <- getSourcePos
+        return (param, maybe (ExprIdent (SourceToken (SourceRange start end) "Any")) id ty)
 
 parseExpr :: Text -> Either (ParseErrorBundle Text Void) Expr
 parseExpr = run expr 

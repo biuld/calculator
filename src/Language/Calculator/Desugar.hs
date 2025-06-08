@@ -4,14 +4,15 @@ import qualified Language.Calculator.CST.Types as CST
 import Language.Calculator.AST.Types
 import qualified Data.Map as Map
 import Data.Type.Equality
+import Unsafe.Coerce (unsafeCoerce)
 
 -- The main desugaring function that converts CST to a type-checked AST.
 desugar :: TypeEnv -> CST.Expr -> Either TypeError TypeExpr
 desugar env cstExpr = case cstExpr of
-  CST.ExprInt t -> Right $ TypeExpr SInt (ExprInt t.tokValue)
-  CST.ExprDouble t -> Right $ TypeExpr SDouble (ExprDouble t.tokValue)
-  CST.ExprBool t -> Right $ TypeExpr SBool (ExprBool t.tokValue)
-  CST.ExprString t -> Right $ TypeExpr SString (ExprString t.tokValue)
+  CST.ExprInt t -> Right $ TypeExpr SInt (ExprLit SInt t.tokValue)
+  CST.ExprDouble t -> Right $ TypeExpr SDouble (ExprLit SDouble t.tokValue)
+  CST.ExprBool t -> Right $ TypeExpr SBool (ExprLit SBool t.tokValue)
+  CST.ExprString t -> Right $ TypeExpr SString (ExprLit SString t.tokValue)
 
   CST.ExprIdent t -> let name = t.tokValue in
     case Map.lookup name env of
@@ -22,16 +23,17 @@ desugar env cstExpr = case cstExpr of
       Just (TypeExpr SString _) -> Right $ TypeExpr SString (ExprIdent name)
       Just (TypeExpr STuple _) -> Right $ TypeExpr STuple (ExprIdent name)
       Just (TypeExpr SUnit _) -> Right $ TypeExpr SUnit (ExprIdent name)
+      Just (TypeExpr (SFun _ _) _) -> Right $ TypeExpr (SFun STuple SUnit) (ExprIdent name)
 
   CST.ExprUnary opToken cstE -> do
     TypeExpr sty e <- desugar env cstE
     let op = opToken.tokValue
     case (op, sty) of
-      (CST.OpNot, SBool) -> Right $ TypeExpr SBool (ExprUnary OpNot e)
-      (CST.OpPlus, SDouble) -> Right $ TypeExpr SDouble (ExprUnary OpDoublePos e)
-      (CST.OpMinus, SDouble) -> Right $ TypeExpr SDouble (ExprUnary OpDoubleNeg e)
-      (CST.OpPlus, SInt) -> Right $ TypeExpr SInt (ExprUnary OpIntPos e)
-      (CST.OpMinus, SInt) -> Right $ TypeExpr SInt (ExprUnary OpIntNeg e)
+      (CST.OpNot, SBool) -> Right $ TypeExpr SBool (ExprUnary NotBool e)
+      (CST.OpPlus, SDouble) -> Right $ TypeExpr SDouble (ExprUnary PosDouble e)
+      (CST.OpMinus, SDouble) -> Right $ TypeExpr SDouble (ExprUnary NegDouble e)
+      (CST.OpPlus, SInt) -> Right $ TypeExpr SInt (ExprUnary PosInt e)
+      (CST.OpMinus, SInt) -> Right $ TypeExpr SInt (ExprUnary NegInt e)
       _ -> Left $ OpMismatch (CST.opToText op) (Exists sty)
 
   CST.ExprBinary opToken cstE1 cstE2 -> do
@@ -41,24 +43,24 @@ desugar env cstExpr = case cstExpr of
     case testEquality sty1 sty2 of
       Nothing -> Left $ TypeMismatch (Exists sty1) (Exists sty2)
       Just Refl -> case (op, sty1) of
-        (CST.OpPlus, SInt) -> Right $ TypeExpr SInt (ExprBinary OpIntAdd e1 e2)
-        (CST.OpPlus, SDouble) -> Right $ TypeExpr SDouble (ExprBinary OpDoubleAdd e1 e2)
-        (CST.OpMinus, SInt) -> Right $ TypeExpr SInt (ExprBinary OpIntSub e1 e2)
-        (CST.OpMinus, SDouble) -> Right $ TypeExpr SDouble (ExprBinary OpDoubleSub e1 e2)
-        (CST.OpMultiply, SInt) -> Right $ TypeExpr SInt (ExprBinary OpIntMul e1 e2)
-        (CST.OpMultiply, SDouble) -> Right $ TypeExpr SDouble (ExprBinary OpDoubleMul e1 e2)
-        (CST.OpDivide, SInt) -> Right $ TypeExpr SInt (ExprBinary OpIntDiv e1 e2)
-        (CST.OpDivide, SDouble) -> Right $ TypeExpr SDouble (ExprBinary OpDoubleDiv e1 e2)
-        (CST.OpEqual, SInt) -> Right $ TypeExpr SBool (ExprBinary OpIntEq e1 e2)
-        (CST.OpEqual, SDouble) -> Right $ TypeExpr SBool (ExprBinary OpDoubleEq e1 e2)
-        (CST.OpEqual, SBool) -> Right $ TypeExpr SBool (ExprBinary OpBoolEq e1 e2)
-        (CST.OpEqual, SString) -> Right $ TypeExpr SBool (ExprBinary OpStringEq e1 e2)
-        (CST.OpNotEqual, SInt) -> Right $ TypeExpr SBool (ExprBinary OpIntNe e1 e2)
-        (CST.OpNotEqual, SDouble) -> Right $ TypeExpr SBool (ExprBinary OpDoubleNe e1 e2)
-        (CST.OpNotEqual, SBool) -> Right $ TypeExpr SBool (ExprBinary OpBoolNe e1 e2)
-        (CST.OpNotEqual, SString) -> Right $ TypeExpr SBool (ExprBinary OpStringNe e1 e2)
-        (CST.OpAnd, SBool) -> Right $ TypeExpr SBool (ExprBinary OpAnd e1 e2)
-        (CST.OpOr, SBool) -> Right $ TypeExpr SBool (ExprBinary OpOr e1 e2)
+        (CST.OpPlus, SInt) -> Right $ TypeExpr SInt (ExprBinary AddInt e1 e2)
+        (CST.OpPlus, SDouble) -> Right $ TypeExpr SDouble (ExprBinary AddDouble e1 e2)
+        (CST.OpMinus, SInt) -> Right $ TypeExpr SInt (ExprBinary SubInt e1 e2)
+        (CST.OpMinus, SDouble) -> Right $ TypeExpr SDouble (ExprBinary SubDouble e1 e2)
+        (CST.OpMultiply, SInt) -> Right $ TypeExpr SInt (ExprBinary MulInt e1 e2)
+        (CST.OpMultiply, SDouble) -> Right $ TypeExpr SDouble (ExprBinary MulDouble e1 e2)
+        (CST.OpDivide, SInt) -> Right $ TypeExpr SInt (ExprBinary DivInt e1 e2)
+        (CST.OpDivide, SDouble) -> Right $ TypeExpr SDouble (ExprBinary DivDouble e1 e2)
+        (CST.OpEqual, SInt) -> Right $ TypeExpr SBool (ExprBinary EqInt e1 e2)
+        (CST.OpEqual, SDouble) -> Right $ TypeExpr SBool (ExprBinary EqDouble e1 e2)
+        (CST.OpEqual, SBool) -> Right $ TypeExpr SBool (ExprBinary EqBool e1 e2)
+        (CST.OpEqual, SString) -> Right $ TypeExpr SBool (ExprBinary EqString e1 e2)
+        (CST.OpNotEqual, SInt) -> Right $ TypeExpr SBool (ExprBinary NeInt e1 e2)
+        (CST.OpNotEqual, SDouble) -> Right $ TypeExpr SBool (ExprBinary NeDouble e1 e2)
+        (CST.OpNotEqual, SBool) -> Right $ TypeExpr SBool (ExprBinary NeBool e1 e2)
+        (CST.OpNotEqual, SString) -> Right $ TypeExpr SBool (ExprBinary NeString e1 e2)
+        (CST.OpAnd, SBool) -> Right $ TypeExpr SBool (ExprBinary AndBool e1 e2)
+        (CST.OpOr, SBool) -> Right $ TypeExpr SBool (ExprBinary OrBool e1 e2)
         _ -> Left $ OpMismatch (CST.opToText op) (Exists sty1)
 
   -- If-else statement
@@ -102,9 +104,36 @@ desugar env cstExpr = case cstExpr of
     let fName = fToken.tokValue
     case Map.lookup fName env of
       Nothing -> Left $ UnboundVariable fName
-      Just (TypeExpr _ _) -> do
-        desugaredArgs <- mapM (desugar env) args
-        Right $ TypeExpr SUnit (ExprApp fName (map (\(TypeExpr _ e) -> Exists e) desugaredArgs))
+      Just (TypeExpr ty _) -> do
+        -- Recursively check function type and arguments
+        let checkArgs :: TermT t -> [CST.Expr] -> Either TypeError (TypeExpr, [Exists Expr])
+            checkArgs (SFun paramTy retTy) (arg:rest) = do
+              -- Desugar and type check the current argument
+              TypeExpr argTy arg' <- desugar env arg
+              -- Check argument type matches parameter type
+              case testEquality argTy paramTy of
+                Nothing -> Left $ TypeMismatch (Exists argTy) (Exists paramTy)
+                Just Refl -> do
+                  -- Recursively check remaining arguments
+                  (TypeExpr finalTy finalExpr, restArgs) <- checkArgs retTy rest
+                  return (TypeExpr finalTy finalExpr, Exists arg' : restArgs)
+            checkArgs (SFun _ _) [] = Left $ ArgNumMismatch 1 0
+            checkArgs finalTy [] = return (TypeExpr finalTy (ExprApp fName []), [])
+            checkArgs _ _ = Left $ NotAFunction fName
+        
+        -- Helper function to count expected arguments
+        let countArgs :: TermT t -> Int
+            countArgs (SFun _ retTy) = 1 + countArgs retTy
+            countArgs _ = 0
+        
+        -- Check if we have enough arguments
+        let expectedArgs = countArgs ty
+        if length args > expectedArgs then
+          Left $ ArgNumMismatch expectedArgs (length args)
+        else do
+          -- Start checking from the function type
+          (TypeExpr finalTy _, desugaredArgs) <- checkArgs ty args
+          return $ TypeExpr finalTy (ExprApp fName desugaredArgs)
 
   -- Let binding
   CST.ExprLet nameToken valueExpr bodyExpr -> do
@@ -112,4 +141,22 @@ desugar env cstExpr = case cstExpr of
     TypeExpr valueTy valueAst <- desugar env valueExpr
     let newEnv = Map.insert name (TypeExpr valueTy valueAst) env
     TypeExpr bodyTy bodyAst <- desugar newEnv bodyExpr
-    Right $ TypeExpr bodyTy (ExprLet name (Exists valueAst) bodyAst)
+    Right $ TypeExpr bodyTy (ExprLet [(name, Exists valueAst)] bodyAst)
+
+  -- Lambda expression with multiple parameters
+  CST.ExprLambda params body -> do
+    -- Desugar the body first to get its type
+    TypeExpr bodyTy body' <- desugar env body
+    
+    -- Convert multi-parameter lambda to nested single-parameter lambdas
+    let desugarParams :: [(CST.SourceToken CST.Ident, CST.Expr)] -> Expr t -> Either TypeError TypeExpr
+        desugarParams [] bodyExpr = Right $ TypeExpr bodyTy (unsafeCoerce bodyExpr)
+        desugarParams ((param, tyExpr):rest) bodyExpr = do
+            -- Desugar the parameter type
+            TypeExpr paramTy _ <- desugar env tyExpr
+            -- Create a single-parameter lambda
+            let lambda = ExprLambda param.tokValue (Exists paramTy) bodyExpr
+            -- Recursively process remaining parameters
+            desugarParams rest lambda
+    
+    desugarParams params body'

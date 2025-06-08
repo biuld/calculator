@@ -50,6 +50,7 @@ data Expr
   | ExprWhile Expr Expr   -- while condition body
   | ExprBlock [Expr]      -- Block of expressions
   | ExprLet (SourceToken Ident) Expr Expr  -- let name = value in body
+  | ExprLambda [(SourceToken Ident, Expr)] Expr  -- Multi-parameter lambda: params -> body
   deriving (Eq, Show)
 
 data SourceRange = SourceRange
