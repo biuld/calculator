@@ -6,42 +6,42 @@ import Data.Functor (void, ($>))
 import Data.Text qualified as T
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
-import Text.Megaparsec (label, many, manyTill, (<|>))
+import Text.Megaparsec qualified as M
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 tokInteger :: Parser (SourceToken Integer)
-tokInteger = label "integer" . lexeme $ L.decimal
+tokInteger = M.label "integer" . lexeme $ L.decimal
 
 tokDouble :: Parser (SourceToken Double)
-tokDouble = label "double" . lexeme $ L.float
+tokDouble = M.label "double" . lexeme $ L.float
 
 tokBool :: Parser (SourceToken Bool)
 tokBool =
-  label "boolean" . lexeme $ bool
+  M.label "boolean" . lexeme $ bool
  where
-  bool = string "true" $> True <|> string "false" $> False
+  bool = (string "true" $> True) M.<|> (string "false" $> False)
 
 tokString :: Parser (SourceToken T.Text)
-tokString = label "string" . lexeme $ str
+tokString = M.label "string" . lexeme $ str
  where
-  str = char '"' >> T.pack <$> manyTill L.charLiteral (char '"')
+  str = char '"' >> T.pack <$> M.manyTill L.charLiteral (char '"')
 
 tokIdent :: Parser (SourceToken T.Text)
-tokIdent = label "identifier" . lexeme $ identifier
+tokIdent = M.label "identifier" . lexeme $ identifier
  where
   identifier :: Parser T.Text
   identifier =
     T.pack <$> do
-      first <- letterChar <|> char '_'
-      rest <- many alphaNumChar
+      first <- letterChar M.<|> char '_'
+      rest <- M.many alphaNumChar
       let ident = first : rest
       if ident `elem` keywords
         then unexpected ("keyword " <> ident)
         else return ident
 
-tokOperator :: T.Text -> Parser (SourceToken Operator)
-tokOperator t = lexeme $ string t
+tokOp :: Operator -> Parser (SourceToken Operator)
+tokOp op = lexeme . M.label "operator" $ op <$ string (opToText op)
 
 tokChar :: Char -> Parser ()
 tokChar c = void . lexeme $ char c

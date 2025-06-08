@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -25,14 +25,15 @@ source-repository head
 
 library
   exposed-modules:
-      Language.Calculator.CST
+      Language.Calculator.AST.Env
+      Language.Calculator.AST.Interpreter
+      Language.Calculator.AST.Printer
+      Language.Calculator.AST.Types
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
-      Language.Calculator.CST.Printer
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
-      Language.Calculator.WASM.Printer
-      Language.Calculator.WASM.Types
+      Language.Calculator.Desugar
   other-modules:
       Paths_calculator
   hs-source-dirs:
@@ -40,14 +41,14 @@ library
   default-extensions:
       OverloadedStrings
       OverloadedRecordDot
-      StandaloneDeriving
-      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , containers
     , megaparsec
+    , parser-combinators
     , text
-  default-language: GHC2021
+  default-language: GHC2024
 
 executable calculator-exe
   main-is: Main.hs
@@ -58,35 +59,33 @@ executable calculator-exe
   default-extensions:
       OverloadedStrings
       OverloadedRecordDot
-      StandaloneDeriving
-      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , calculator
+    , containers
     , megaparsec
+    , parser-combinators
     , text
-  default-language: GHC2021
+  default-language: GHC2024
 
 test-suite calculator-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      LexerTest
-      ParserTest
       Paths_calculator
   hs-source-dirs:
       test
   default-extensions:
       OverloadedStrings
       OverloadedRecordDot
-      StandaloneDeriving
-      DuplicateRecordFields
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , calculator
+    , containers
     , hspec
     , megaparsec
+    , parser-combinators
     , text
-  default-language: GHC2021
+  default-language: GHC2024

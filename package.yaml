@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - text
 - megaparsec
+- parser-combinators
+- containers
 
 ghc-options:
 - -Wall
@@ -38,9 +40,7 @@ ghc-options:
 default-extensions:
   - OverloadedStrings
   - OverloadedRecordDot
-  - StandaloneDeriving
-  - DuplicateRecordFields
-language: GHC2021
+language: GHC2024
 
 library:
   source-dirs: src
