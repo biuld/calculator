@@ -1,37 +1,52 @@
 module Language.Calculator.CST.Types (
-  Operator,
+  Operator (..),
   Expr (..),
   Ident,
-  Statement (..),
   SourceToken (..),
   SourceRange (..),
-  ge,
+  getOpPrecedence,
   keywords,
+  opToText,
 ) where
 
 import Data.Text
 import Text.Megaparsec
 
-getOpPrecedence :: Operator -> OperatorPrecedence
-getOpPrecedence "+" = 1
-getOpPrecedence "-" = 1
-getOpPrecedence "/" = 2
-getOpPrecedence "*" = 2
-getOpPrecedence "==" = 0
-getOpPrecedence "!=" = 0
-getOpPrecedence "&&" = 3
-getOpPrecedence "||" = 3
-getOpPrecedence "!" = 4
-getOpPrecedence _ = error "undefined operator"
+data Operator
+  = OpPlus
+  | OpMinus
+  | OpMultiply
+  | OpDivide
+  | OpEqual
+  | OpNotEqual
+  | OpAnd
+  | OpOr
+  | OpNot
+  deriving (Eq, Show)
 
-ge :: Operator -> Operator -> Bool
-ge op1 op2 = getOpPrecedence op1 >= getOpPrecedence op2
+getOpPrecedence :: Operator -> Int
+getOpPrecedence OpPlus = 1
+getOpPrecedence OpMinus = 1
+getOpPrecedence OpMultiply = 2
+getOpPrecedence OpDivide = 2
+getOpPrecedence OpEqual = 0
+getOpPrecedence OpNotEqual = 0
+getOpPrecedence OpAnd = 3
+getOpPrecedence OpOr = 3
+getOpPrecedence OpNot = 4
+
+opToText :: Operator -> Text
+opToText OpPlus = "+"
+opToText OpMinus = "-"
+opToText OpMultiply = "*"
+opToText OpDivide = "/"
+opToText OpEqual = "=="
+opToText OpNotEqual = "!="
+opToText OpAnd = "&&"
+opToText OpOr = "||"
+opToText OpNot = "!"
 
 type Ident = Text
-
-type Operator = Text
-
-type OperatorPrecedence = Int
 
 data Expr
   = ExprInt (SourceToken Integer)
@@ -42,7 +57,6 @@ data Expr
   | ExprTuple [Expr]
   | ExprUnary (SourceToken Operator) Expr
   | ExprBinary (SourceToken Operator) Expr Expr
-  | ExprBind (SourceToken Ident) Expr
   | ExprApp (SourceToken Ident) [Expr]
   deriving (Eq, Show)
 
@@ -61,13 +75,5 @@ data SourceToken a = SourceToken
   }
   deriving (Eq, Show)
 
-data Statement
-  = StmAbs (SourceToken Ident) [Expr] [Statement]
-  | StmIfElse Expr [Statement] [Statement]
-  | StmWhile Expr [Statement]
-  | StmFor Expr Expr Expr [Statement]
-  | StmE Expr
-  deriving (Eq, Show)
-
 keywords :: [String]
-keywords = ["if", "else", "let", "for", "while"]
+keywords = ["if", "else", "let", "for", "while", "function"]

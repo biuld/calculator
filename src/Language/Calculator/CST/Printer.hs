@@ -23,8 +23,6 @@ pprintExpr depth sign e = case e of
         putStrLn (format depth sign op) >> pprintExpr (depth + 1) sign e1
     (ExprBinary (SourceToken _ op) e1 e2) ->
         putStrLn (format depth sign op) >> pprintExpr (depth + 1) start e1 >> pprintExpr (depth + 1) end e2
-    (ExprBind (SourceToken _ i) e1) ->
-        putStrLn (format depth sign "ABS") >> putStrLn (format (depth + 1) sign i) >> pprintExpr (depth + 1) sign e1
     (ExprApp (SourceToken _ i) es) -> 
         putStrLn (format depth sign "APP") >>  putStrLn (format (depth + 1) start i) >> go (depth + 1) es
   where
