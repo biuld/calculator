@@ -4,7 +4,6 @@ module Language.Calculator.CST.Types (
   Ident,
   SourceToken (..),
   SourceRange (..),
-  getOpPrecedence,
   keywords,
   opToText,
 ) where
@@ -23,17 +22,6 @@ data Operator
   | OpOr
   | OpNot
   deriving (Eq, Show)
-
-getOpPrecedence :: Operator -> Int
-getOpPrecedence OpPlus = 1
-getOpPrecedence OpMinus = 1
-getOpPrecedence OpMultiply = 2
-getOpPrecedence OpDivide = 2
-getOpPrecedence OpEqual = 0
-getOpPrecedence OpNotEqual = 0
-getOpPrecedence OpAnd = 3
-getOpPrecedence OpOr = 3
-getOpPrecedence OpNot = 4
 
 opToText :: Operator -> Text
 opToText OpPlus = "+"
@@ -58,6 +46,10 @@ data Expr
   | ExprUnary (SourceToken Operator) Expr
   | ExprBinary (SourceToken Operator) Expr Expr
   | ExprApp (SourceToken Ident) [Expr]
+  | ExprIf Expr Expr Expr  -- if condition thenExpr elseExpr
+  | ExprWhile Expr Expr   -- while condition body
+  | ExprBlock [Expr]      -- Block of expressions
+  | ExprLet (SourceToken Ident) Expr Expr  -- let name = value in body
   deriving (Eq, Show)
 
 data SourceRange = SourceRange

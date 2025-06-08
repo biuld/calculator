@@ -3,11 +3,11 @@ module Main (module Main) where
 import Data.Text (pack)
 import qualified Data.Map as Map
 import Language.Calculator.CST.Parser (parseExpr)
-import Language.Calculator.Desugar (desugar, TypedExpr(..))
+import Language.Calculator.Desugar (desugar)
 import Language.Calculator.AST.Printer (pprint)
-import Language.Calculator.AST.Types (SomeExpr(..))
+import Language.Calculator.AST.Types (TypeExpr(..), Exists(..), Expr(..))
 import Language.Calculator.AST.Interpreter (interpret)
-import Language.Calculator.AST.Env (Env, emptyEnv)
+import Language.Calculator.AST.Env (emptyEnv)
 import System.IO (hFlush, stdout)
 import Text.Megaparsec (errorBundlePretty)
 
@@ -26,9 +26,9 @@ main = loop Map.empty emptyEnv
             Right cst -> do
               case desugar typeEnv cst of
                 Left err -> print err
-                Right (TypedExpr _ ast) -> do
+                Right (TypeExpr _ ast) -> do
                   putStrLn "AST:"
-                  pprint (SomeExpr ast)
+                  pprint (Exists ast :: Exists Expr)
                   putStrLn "Result:"
-                  pprint (SomeExpr (interpret env ast))
+                  pprint (Exists (interpret env ast) :: Exists Expr)
               loop typeEnv env

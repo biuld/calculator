@@ -1,10 +1,3 @@
--- |
--- Module      : Language.Calculator.CST.Parser
--- Description : The parser for the calculator language
---
--- This module contains the parser for the calculator language.
--- It is implemented using the megaparsec library.
---
 module Language.Calculator.CST.Parser (
     parseExpr,
     expr,
@@ -46,7 +39,11 @@ expr = E.makeExprParser term table
 term :: Parser Expr
 term =
     choice
-        [ pParen
+        [ pLet
+        , pParen
+        , pIf
+        , pWhile
+        , pBlock
         , ExprDouble <$> try tokDouble
         , ExprInt <$> tokInteger
         , ExprBool <$> tokBool
@@ -107,6 +104,45 @@ separated sep open close m = wrapped open close inner
 
 tuple :: Parser a -> Parser [a]
 tuple = separated (tokChar ',') '(' ')'
+
+-- Parse if-else statement
+pIf :: Parser Expr
+pIf = do
+    keyword "if"
+    cond <- expr
+    keyword "then"
+    thenExpr <- expr
+    keyword "else"
+    elseExpr <- expr
+    return $ ExprIf cond thenExpr elseExpr
+
+-- Parse while statement
+pWhile :: Parser Expr
+pWhile = do
+    keyword "while"
+    cond <- expr
+    keyword "do"
+    body <- expr
+    return $ ExprWhile cond body
+
+-- Parse block of expressions
+pBlock :: Parser Expr
+pBlock = do
+    tokChar '{'
+    exprs <- sepEndBy expr (tokChar ';')
+    tokChar '}'
+    return $ ExprBlock exprs
+
+-- Parse let expression
+pLet :: Parser Expr
+pLet = do
+    keyword "let"
+    name <- tokIdent
+    tokChar '='
+    value <- expr
+    keyword "in"
+    body <- expr
+    return $ ExprLet name value body
 
 parseExpr :: Text -> Either (ParseErrorBundle Text Void) Expr
 parseExpr = run expr 
