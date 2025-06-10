@@ -31,9 +31,11 @@ applyArgs env func (ExprLambda param _ body) args = case args of
                 nextFunc@(ExprLambda nextParam _ _) -> do
                     -- Create a nested environment for the next lambda
                     let nextEnv = Env Map.empty (Just newEnv)
-                    -- Store the next lambda in the nested environment using nextParam as the name
-                    let finalEnv = extendEnv [(nextParam, TypeExpr (exprToTermT newEnv nextFunc) nextFunc)] nextEnv
-                    unsafeCoerce $ applyArgs finalEnv nextParam nextFunc rest
+                    -- Generate a unique identifier using the function name
+                    let uniqueFuncName = func <> "_" <> nextParam
+                    -- Store the next lambda in the nested environment using the unique identifier
+                    let finalEnv = extendEnv [(uniqueFuncName, TypeExpr (exprToTermT newEnv nextFunc) nextFunc)] nextEnv
+                    unsafeCoerce $ applyArgs finalEnv uniqueFuncName nextFunc rest
                 _ -> error $ unpack func <> " expects more arguments"
 applyArgs _ func _ _ = error $ unpack func <> " is not a function"
 
@@ -144,9 +146,36 @@ exprToTermT _ (ExprTuple _) = STuple
 exprToTermT env (ExprIdent name) = case lookupEnv name env of
     Just (TypeExpr t _) -> unsafeCoerce t
     Nothing -> error $ "Unbound variable: " ++ unpack name
-exprToTermT _ (ExprUnary _ _) = error "Cannot determine type of unary operation"
-exprToTermT _ (ExprBinary _ _ _) = error "Cannot determine type of binary operation"
-exprToTermT _ (ExprApp _ _) = error "Cannot determine type of function application"
+exprToTermT _ (ExprUnary op _) = case op of
+    NotBool -> SBool
+    PosDouble -> SDouble
+    NegDouble -> SDouble
+    PosInt -> SInt
+    NegInt -> SInt
+    _ -> error "Unhandled unary operation"
+exprToTermT _ (ExprBinary op _ _) = case op of
+    AddInt -> SInt
+    SubInt -> SInt
+    MulInt -> SInt
+    DivInt -> SInt
+    AddDouble -> SDouble
+    SubDouble -> SDouble
+    MulDouble -> SDouble
+    DivDouble -> SDouble
+    AndBool -> SBool
+    OrBool -> SBool
+    EqInt -> SBool
+    NeInt -> SBool
+    EqDouble -> SBool
+    NeDouble -> SBool
+    EqBool -> SBool
+    NeBool -> SBool
+    EqString -> SBool
+    NeString -> SBool
+    _ -> error "Unhandled binary operation"
+exprToTermT env (ExprApp func _) = case lookupEnv func env of
+    Just (TypeExpr (SFun _ retTy) _) -> unsafeCoerce retTy
+    _ -> error $ "Cannot determine type of function application: " ++ unpack func
 exprToTermT env (ExprIf _ thenExpr _) = exprToTermT env thenExpr
 exprToTermT _ (ExprWhile _ _) = SUnit
 exprToTermT _ (ExprBlock _) = SUnit

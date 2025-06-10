@@ -31,6 +31,7 @@ library
       Language.Calculator.AST.Types
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
+      Language.Calculator.CST.Printer
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
       Language.Calculator.Desugar
@@ -73,6 +74,8 @@ test-suite calculator-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      DesugarSpec
+      ParserSpec
       Paths_calculator
   hs-source-dirs:
       test

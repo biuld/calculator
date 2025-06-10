@@ -4,7 +4,7 @@ import qualified Language.Calculator.CST.Types as CST
 import Language.Calculator.AST.Types
 import qualified Data.Map as Map
 import Data.Type.Equality
-import Unsafe.Coerce (unsafeCoerce)
+import qualified Data.Text as Text
 
 -- The main desugaring function that converts CST to a type-checked AST.
 desugar :: TypeEnv -> CST.Expr -> Either TypeError TypeExpr
@@ -23,7 +23,7 @@ desugar env cstExpr = case cstExpr of
       Just (TypeExpr SString _) -> Right $ TypeExpr SString (ExprIdent name)
       Just (TypeExpr STuple _) -> Right $ TypeExpr STuple (ExprIdent name)
       Just (TypeExpr SUnit _) -> Right $ TypeExpr SUnit (ExprIdent name)
-      Just (TypeExpr (SFun _ _) _) -> Right $ TypeExpr (SFun STuple SUnit) (ExprIdent name)
+      Just (TypeExpr (SFun paramTy retTy) _) -> Right $ TypeExpr (SFun paramTy retTy) (ExprIdent name)
 
   CST.ExprUnary opToken cstE -> do
     TypeExpr sty e <- desugar env cstE
@@ -104,36 +104,20 @@ desugar env cstExpr = case cstExpr of
     let fName = fToken.tokValue
     case Map.lookup fName env of
       Nothing -> Left $ UnboundVariable fName
-      Just (TypeExpr ty _) -> do
-        -- Recursively check function type and arguments
-        let checkArgs :: TermT t -> [CST.Expr] -> Either TypeError (TypeExpr, [Exists Expr])
-            checkArgs (SFun paramTy retTy) (arg:rest) = do
-              -- Desugar and type check the current argument
-              TypeExpr argTy arg' <- desugar env arg
-              -- Check argument type matches parameter type
+      Just (TypeExpr initialFTy _) -> do
+        -- Recursive helper to apply arguments one by one
+        let applyArgs :: TermT t1 -> [CST.Expr] -> Either TypeError (Exists TermT, [Exists Expr])
+            applyArgs currentTy [] = Right (Exists currentTy, [])
+            applyArgs (SFun paramTy retTy) (argCST:rest) = do
+              TypeExpr argTy argAst <- desugar env argCST
               case testEquality argTy paramTy of
                 Nothing -> Left $ TypeMismatch (Exists argTy) (Exists paramTy)
                 Just Refl -> do
-                  -- Recursively check remaining arguments
-                  (TypeExpr finalTy finalExpr, restArgs) <- checkArgs retTy rest
-                  return (TypeExpr finalTy finalExpr, Exists arg' : restArgs)
-            checkArgs (SFun _ _) [] = Left $ ArgNumMismatch 1 0
-            checkArgs finalTy [] = return (TypeExpr finalTy (ExprApp fName []), [])
-            checkArgs _ _ = Left $ NotAFunction fName
-        
-        -- Helper function to count expected arguments
-        let countArgs :: TermT t -> Int
-            countArgs (SFun _ retTy) = 1 + countArgs retTy
-            countArgs _ = 0
-        
-        -- Check if we have enough arguments
-        let expectedArgs = countArgs ty
-        if length args > expectedArgs then
-          Left $ ArgNumMismatch expectedArgs (length args)
-        else do
-          -- Start checking from the function type
-          (TypeExpr finalTy _, desugaredArgs) <- checkArgs ty args
-          return $ TypeExpr finalTy (ExprApp fName desugaredArgs)
+                  (Exists finalTy, restArgs) <- applyArgs retTy rest
+                  return (Exists finalTy, Exists argAst : restArgs)
+            applyArgs _ (_:_) = Left $ NotAFunction fName
+        (Exists finalResultTy, desugaredArgsList) <- applyArgs initialFTy args
+        return $ TypeExpr finalResultTy (ExprApp fName desugaredArgsList)
 
   -- Let binding
   CST.ExprLet nameToken valueExpr bodyExpr -> do
@@ -145,18 +129,34 @@ desugar env cstExpr = case cstExpr of
 
   -- Lambda expression with multiple parameters
   CST.ExprLambda params body -> do
-    -- Desugar the body first to get its type
-    TypeExpr bodyTy body' <- desugar env body
-    
-    -- Convert multi-parameter lambda to nested single-parameter lambdas
-    let desugarParams :: [(CST.SourceToken CST.Ident, CST.Expr)] -> Expr t -> Either TypeError TypeExpr
-        desugarParams [] bodyExpr = Right $ TypeExpr bodyTy (unsafeCoerce bodyExpr)
-        desugarParams ((param, tyExpr):rest) bodyExpr = do
-            -- Desugar the parameter type
-            TypeExpr paramTy _ <- desugar env tyExpr
-            -- Create a single-parameter lambda
-            let lambda = ExprLambda param.tokValue (Exists paramTy) bodyExpr
-            -- Recursively process remaining parameters
-            desugarParams rest lambda
-    
-    desugarParams params body'
+    -- First, get all parameter types
+    let getParamTy :: CST.Expr -> Either TypeError (Exists TermT)
+        getParamTy (CST.ExprIdent t) = case t.tokValue of
+          "Int" -> Right (Exists SInt)
+          "Double" -> Right (Exists SDouble)
+          "Bool" -> Right (Exists SBool)
+          "String" -> Right (Exists SString)
+          _ -> Left $ OtherError $ "Invalid type name '" ++ Text.unpack t.tokValue ++ "'. Expected one of: Int, Double, Bool, String"
+        getParamTy _ = Left $ OtherError "Parameter type annotation must be an identifier"
+
+        extractParams :: [(CST.SourceToken CST.Ident, CST.Expr)] -> Either TypeError [(Text.Text, Exists TermT)]
+        extractParams [] = Right []
+        extractParams ((tok, tyExpr):rest) = do
+          pTyExists <- getParamTy tyExpr
+          rest' <- extractParams rest
+          return $ (tok.tokValue, pTyExists) : rest'
+
+    paramList <- extractParams params
+
+    -- Extend environment with parameter bindings for body desugaring
+    let envWithParams = foldl (\e (n, Exists ty) -> Map.insert n (TypeExpr ty (ExprIdent n)) e) env paramList
+
+    -- Desugar body
+    TypeExpr bodyTy bodyExpr <- desugar envWithParams body
+
+    -- Build nested lambdas and function type
+    let buildLambda (name, Exists paramTy) (TypeExpr accTy accExpr) =
+          TypeExpr (SFun paramTy accTy) (ExprLambda name (Exists paramTy) accExpr)
+        lambdaTypeExpr = foldr buildLambda (TypeExpr bodyTy bodyExpr) paramList
+
+    Right lambdaTypeExpr

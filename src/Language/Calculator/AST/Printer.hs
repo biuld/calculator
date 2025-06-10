@@ -7,57 +7,67 @@ start :: String
 start = "├──"
 end :: String
 end = "└──"
+vertical :: String
+vertical = "│  "
+space :: String
+space = "   "
 
-format :: Int -> String -> String -> String
-format 0 sign a = sign <> a
-format n sign a = "    " <> format (n - 1) sign a
-
-pprintExpr :: Int -> String -> Exists Expr -> IO ()
-pprintExpr depth sign (Exists e) = case e of
-    (ExprLit _ val) -> putStrLn $ format depth sign (show val)
-    (ExprIdent i) -> putStrLn $ format depth sign (unpack i)
+pprintExpr :: String -> Bool -> Exists Expr -> IO ()
+pprintExpr prefix isLast (Exists e) =
+    let
+      (sign, childPrefix) = if isLast
+        then (end, prefix <> space)
+        else (start, prefix <> vertical)
+      go :: String -> [Exists Expr] -> IO ()
+      go _ [] = return ()
+      go p [h] = pprintExpr p True h
+      go p (h : t) = pprintExpr p False h >> go p t
+    in case e of
+    (ExprLit _ val) -> putStrLn $ prefix <> sign <> show val
+    (ExprIdent i) -> putStrLn $ prefix <> sign <> unpack i
     (ExprTuple es) ->
-        putStrLn (format depth sign "()") >> go (depth + 1) es
+        putStrLn (prefix <> sign <> "()") >> go childPrefix es
     (ExprUnary op e1) ->
-        putStrLn (format depth sign (show op)) >> pprintExpr (depth + 1) end (Exists e1)
+        putStrLn (prefix <> sign <> show op) >> pprintExpr childPrefix True (Exists e1)
     (ExprBinary op e1 e2) ->
-        putStrLn (format depth sign (show op)) >> pprintExpr (depth + 1) start (Exists e1) >> pprintExpr (depth + 1) end (Exists e2)
+        putStrLn (prefix <> sign <> show op) >> 
+        pprintExpr childPrefix False (Exists e1) >> 
+        pprintExpr childPrefix True (Exists e2)
     (ExprApp i es) -> 
-        putStrLn (format depth sign "APP") >>  putStrLn (format (depth + 1) start (unpack i)) >> go (depth + 1) es
+        putStrLn (prefix <> sign <> "APP") >>
+        (let identIsLast = null es
+             identSign = if identIsLast then end else start
+         in putStrLn (childPrefix <> identSign <> unpack i)) >>
+        go childPrefix es
     (ExprIf cond thenExpr elseExpr) ->
-        putStrLn (format depth sign "IF") >>
-        pprintExpr (depth + 1) start (Exists cond) >>
-        putStrLn (format (depth + 1) start "THEN") >>
-        pprintExpr (depth + 2) start (Exists thenExpr) >>
-        putStrLn (format (depth + 1) end "ELSE") >>
-        pprintExpr (depth + 2) end (Exists elseExpr)
+        putStrLn (prefix <> sign <> "IF") >>
+        pprintExpr childPrefix False (Exists cond) >>
+        putStrLn (childPrefix <> start <> "THEN") >>
+        pprintExpr (childPrefix <> vertical) True (Exists thenExpr) >>
+        putStrLn (childPrefix <> end <> "ELSE") >>
+        pprintExpr (childPrefix <> space) True (Exists elseExpr)
     (ExprWhile cond body) ->
-        putStrLn (format depth sign "WHILE") >>
-        pprintExpr (depth + 1) start (Exists cond) >>
-        putStrLn (format (depth + 1) end "DO") >>
-        pprintExpr (depth + 2) end (Exists body)
+        putStrLn (prefix <> sign <> "WHILE") >>
+        pprintExpr childPrefix False (Exists cond) >>
+        putStrLn (childPrefix <> end <> "DO") >>
+        pprintExpr (childPrefix <> space) True (Exists body)
     (ExprBlock es) ->
-        putStrLn (format depth sign "BLOCK") >> go (depth + 1) es
+        putStrLn (prefix <> sign <> "BLOCK") >> go childPrefix es
     ExprUnit ->
-        putStrLn $ format depth sign "UNIT"
-    (ExprLet bindings body) ->
-        putStrLn (format depth sign "LET") >>
-        mapM_ (\(name, value) -> 
-            putStrLn (format (depth + 1) start (unpack name)) >>
-            pprintExpr (depth + 2) start value
-        ) bindings >>
-        putStrLn (format (depth + 1) start "IN") >>
-        pprintExpr (depth + 2) end (Exists body)
+        putStrLn $ prefix <> sign <> "UNIT"
+    (ExprLet bindings body) -> do
+        putStrLn (prefix <> sign <> "LET")
+        let printBinding (name, value) = do
+                putStrLn (childPrefix <> start <> unpack name)
+                pprintExpr (childPrefix <> vertical) True value
+        mapM_ printBinding bindings
+        putStrLn (childPrefix <> end <> "IN")
+        pprintExpr (childPrefix <> space) True (Exists body)
     (ExprLambda param ty body) ->
-        putStrLn (format depth sign "LAMBDA") >>
-        putStrLn (format (depth + 1) start (unpack param)) >>
-        putStrLn (format (depth + 1) start (show ty)) >>
-        pprintExpr (depth + 1) end (Exists body)
-  where
-    go :: Int -> [Exists Expr] -> IO ()
-    go _ [] = return ()
-    go d [h] = pprintExpr d end h
-    go d (h : t) = pprintExpr d start h >> go d t
+        putStrLn (prefix <> sign <> "LAMBDA") >>
+        putStrLn (childPrefix <> start <> unpack param) >>
+        putStrLn (childPrefix <> start <> show ty) >>
+        pprintExpr childPrefix True (Exists body)
 
 pprint :: Exists Expr -> IO ()
-pprint = pprintExpr 0 end 
+pprint = pprintExpr "" True 
