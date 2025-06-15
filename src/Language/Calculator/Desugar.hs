@@ -5,6 +5,8 @@ import Language.Calculator.AST.Types
 import qualified Data.Map as Map
 import Data.Type.Equality
 import qualified Data.Text as Text
+import Data.Maybe (isJust, fromJust)
+import Data.List (partition)
 
 -- The main desugaring function that converts CST to a type-checked AST.
 desugar :: TypeEnv -> CST.Expr -> Either TypeError TypeExpr
@@ -129,34 +131,55 @@ desugar env cstExpr = case cstExpr of
 
   -- Lambda expression with multiple parameters
   CST.ExprLambda params body -> do
-    -- First, get all parameter types
-    let getParamTy :: CST.Expr -> Either TypeError (Exists TermT)
+    -- This helper attempts to infer types for parameters without explicit annotations.
+    -- It tries a list of possible types and returns the first successful combination.
+    let inferAndDesugar :: [(Text.Text, [Exists TermT])]
+                        -> TypeEnv
+                        -> CST.Expr
+                        -> Either TypeError ([(Text.Text, Exists TermT)], TypeExpr)
+        inferAndDesugar [] env' expr' = do
+          res <- desugar env' expr'
+          return ([], res)
+        inferAndDesugar ((name, tyTries):rest) env' expr' =
+          let go [] = Left $ TypeInferenceFailed name
+              go ((Exists ty):tys) =
+                let newEnv = Map.insert name (TypeExpr ty (ExprIdent name)) env'
+                in case inferAndDesugar rest newEnv expr' of
+                  Right (inferredTys, res) -> Right ((name, Exists ty) : inferredTys, res)
+                  Left _ -> go tys -- Backtrack on any failure
+          in go tyTries
+
+    let getParamTy :: CST.Expr -> Either TypeError (Maybe (Exists TermT))
         getParamTy (CST.ExprIdent t) = case t.tokValue of
-          "Int" -> Right (Exists SInt)
-          "Double" -> Right (Exists SDouble)
-          "Bool" -> Right (Exists SBool)
-          "String" -> Right (Exists SString)
+          "Int" -> Right (Just (Exists SInt))
+          "Double" -> Right (Just (Exists SDouble))
+          "Bool" -> Right (Just (Exists SBool))
+          "String" -> Right (Just (Exists SString))
+          "Any" -> Right Nothing -- Represents a type to be inferred
           _ -> Left $ OtherError $ "Invalid type name '" ++ Text.unpack t.tokValue ++ "'. Expected one of: Int, Double, Bool, String"
         getParamTy _ = Left $ OtherError "Parameter type annotation must be an identifier"
 
-        extractParams :: [(CST.SourceToken CST.Ident, CST.Expr)] -> Either TypeError [(Text.Text, Exists TermT)]
-        extractParams [] = Right []
-        extractParams ((tok, tyExpr):rest) = do
-          pTyExists <- getParamTy tyExpr
-          rest' <- extractParams rest
-          return $ (tok.tokValue, pTyExists) : rest'
+    -- Extract and process parameters in one go
+    paramListWithMaybeTypes <- mapM (\(tok, tyExpr) -> do
+      pTyExists <- getParamTy tyExpr
+      return (tok.tokValue, pTyExists)) params
 
-    paramList <- extractParams params
+    let (knownParams, unknownParams) = partition (isJust . snd) paramListWithMaybeTypes
+        knownParamList = [ (n, ty) | (n, Just ty) <- knownParams ]
+        unknownParamNames = map fst unknownParams
+        envWithKnowns = foldl (\e (n, Exists ty) -> Map.insert n (TypeExpr ty (ExprIdent n)) e) env knownParamList
+        possibleTypes = [Exists SInt, Exists SDouble, Exists SBool, Exists SString]
+        inferenceTries = [(name, possibleTypes) | name <- unknownParamNames]
 
-    -- Extend environment with parameter bindings for body desugaring
-    let envWithParams = foldl (\e (n, Exists ty) -> Map.insert n (TypeExpr ty (ExprIdent n)) e) env paramList
-
-    -- Desugar body
-    TypeExpr bodyTy bodyExpr <- desugar envWithParams body
+    -- Infer types and build final expression
+    (inferredParams, TypeExpr bodyTy bodyExpr) <- inferAndDesugar inferenceTries envWithKnowns body
 
     -- Build nested lambdas and function type
     let buildLambda (name, Exists paramTy) (TypeExpr accTy accExpr) =
           TypeExpr (SFun paramTy accTy) (ExprLambda name (Exists paramTy) accExpr)
-        lambdaTypeExpr = foldr buildLambda (TypeExpr bodyTy bodyExpr) paramList
+        inferredMap = Map.fromList inferredParams
+        finalParamList = map (\(n, mTy) -> 
+          maybe (n, fromJust (Map.lookup n inferredMap)) (\ty -> (n,ty)) mTy) 
+          paramListWithMaybeTypes
 
-    Right lambdaTypeExpr
+    Right $ foldr buildLambda (TypeExpr bodyTy bodyExpr) finalParamList

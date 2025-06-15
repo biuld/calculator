@@ -78,6 +78,7 @@ data TypeError where
   OpMismatch :: Text -> Exists TermT -> TypeError
   ArgNumMismatch :: Int -> Int -> TypeError
   NotAFunction :: Text -> TypeError
+  TypeInferenceFailed :: Text -> TypeError
   OtherError :: String -> TypeError
   deriving (Show, Eq)
 
