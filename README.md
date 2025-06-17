@@ -25,7 +25,7 @@ A statically typed calculator language written in Haskell with a focus on type s
   - Expression sequences
 
 - **Variables and Functions**
-  - `let` bindings
+  - `let` bindings (single and multiple)
   - Lambda expressions with explicit type annotations
   - Partial application & multi-argument functions
   - Hindley-Milner-style type inference during desugaring
@@ -74,10 +74,10 @@ stack run calculator-exe -- parse "(1 + 2) * 3"
 stack run calculator-exe -- parse -r "(1 + 2) * 3"
 
 # Desugar to AST
-stack run calculator-exe -- desugar "let f = \a:Int b:Int -> a + b in f (1, 2)"
+stack run calculator-exe -- desugar "let { f = \a:Int -> \b:Int -> a + b; x = 1; y = 2 } in f x y"
 
 # Evaluate an expression
-stack run calculator-exe -- eval "while (1 == 1) { 42 }"
+stack run calculator-exe -- eval "let {x = 10; y = 20} in x + y"
 ```
 
 ## Project Layout
@@ -86,7 +86,7 @@ stack run calculator-exe -- eval "while (1 == 1) { 42 }"
 src/
   Language/Calculator/
     CST/         -- Lexer, parser, tokens & CST pretty printer
-    AST/         -- Typed AST, interpreter, environment utilities
+    AST/         -- Typed AST, interpreter, value & environment utilities
     Desugar.hs   -- CST → AST desugaring with type checking
 app/Main.hs      -- Command-line interface
 

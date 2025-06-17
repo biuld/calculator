@@ -25,10 +25,10 @@ source-repository head
 
 library
   exposed-modules:
-      Language.Calculator.AST.Env
       Language.Calculator.AST.Interpreter
       Language.Calculator.AST.Printer
       Language.Calculator.AST.Types
+      Language.Calculator.AST.Values
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
       Language.Calculator.CST.Printer

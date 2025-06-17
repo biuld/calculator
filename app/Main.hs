@@ -8,7 +8,7 @@ import Language.Calculator.Desugar (desugar)
 import qualified Language.Calculator.AST.Printer as ASTPrinter
 import Language.Calculator.AST.Types (TypeExpr(..), Exists(..), Expr(..))
 import Language.Calculator.AST.Interpreter (interpret)
-import Language.Calculator.AST.Env (emptyEnv)
+import Language.Calculator.AST.Values (emptyEnv, Value)
 import System.Environment (getArgs)
 import Text.Megaparsec (errorBundlePretty)
 
@@ -41,7 +41,7 @@ handleDesugar raw expr = do
 
 -- | Handle eval command
 handleEval :: Bool -> String -> IO ()
-handleEval raw expr = do
+handleEval _ expr = do
   case parseExpr (pack expr) of
     Left err -> putStrLn $ errorBundlePretty err
     Right cst -> do
@@ -49,9 +49,7 @@ handleEval raw expr = do
         Left err -> print err
         Right (TypeExpr _ ast) -> do
           let result = interpret emptyEnv ast
-          if raw
-            then print result
-            else ASTPrinter.pprint (Exists result :: Exists Expr)
+          print result
 
 -- | Print usage information
 printUsage :: IO ()

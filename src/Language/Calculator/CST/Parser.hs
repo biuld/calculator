@@ -138,12 +138,29 @@ pBlock = do
 pLet :: Parser Expr
 pLet = do
     keyword "let"
+    bindings <- try parseMultipleBindings <|> parseSingleBinding
+    keyword "in"
+    body <- expr
+    return $ ExprLet bindings body
+
+parseSingleBinding :: Parser [(SourceToken Ident, Expr)]
+parseSingleBinding = do
+    binding <- parseBinding
+    return [binding]
+
+parseMultipleBindings :: Parser [(SourceToken Ident, Expr)]
+parseMultipleBindings = do
+    tokChar '{'
+    bindings <- sepEndBy parseBinding (tokChar ';')
+    tokChar '}'
+    return bindings
+
+parseBinding :: Parser (SourceToken Ident, Expr)
+parseBinding = do
     name <- tokIdent
     tokChar '='
     value <- expr
-    keyword "in"
-    body <- expr
-    return $ ExprLet name value body
+    return (name, value)
 
 -- Parse lambda expression
 pLambda :: Parser Expr

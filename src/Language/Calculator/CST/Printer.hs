@@ -53,10 +53,11 @@ pprintExpr prefix isLast expr =
         pprintExpr (childPrefix <> space) True body
     (ExprBlock es) ->
         putStrLn (prefix <> sign <> "BLOCK") >> go childPrefix es
-    (ExprLet name value body) ->
+    (ExprLet bindings body) ->
         putStrLn (prefix <> sign <> "LET") >>
-        putStrLn (childPrefix <> start <> unpack name.tokValue) >>
-        pprintExpr childPrefix False value >>
+        mapM_ (\(name, value) -> 
+            putStrLn (childPrefix <> start <> unpack name.tokValue) >>
+            pprintExpr childPrefix False value) bindings >>
         putStrLn (childPrefix <> start <> "IN") >>
         pprintExpr childPrefix True body
     (ExprLambda params body) ->

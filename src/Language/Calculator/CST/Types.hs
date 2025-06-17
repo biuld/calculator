@@ -49,7 +49,7 @@ data Expr
   | ExprIf Expr Expr Expr  -- if condition thenExpr elseExpr
   | ExprWhile Expr Expr   -- while condition body
   | ExprBlock [Expr]      -- Block of expressions
-  | ExprLet (SourceToken Ident) Expr Expr  -- let name = value in body
+  | ExprLet [(SourceToken Ident, Expr)] Expr  -- let bindings in body
   | ExprLambda [(SourceToken Ident, Expr)] Expr  -- Multi-parameter lambda: params -> body
   deriving (Eq, Show)
 

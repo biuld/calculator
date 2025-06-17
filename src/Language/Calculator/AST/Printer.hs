@@ -33,12 +33,10 @@ pprintExpr prefix isLast (Exists e) =
         putStrLn (prefix <> sign <> show op) >> 
         pprintExpr childPrefix False (Exists e1) >> 
         pprintExpr childPrefix True (Exists e2)
-    (ExprApp i es) -> 
+    (ExprApp f a) ->
         putStrLn (prefix <> sign <> "APP") >>
-        (let identIsLast = null es
-             identSign = if identIsLast then end else start
-         in putStrLn (childPrefix <> identSign <> unpack i)) >>
-        go childPrefix es
+        pprintExpr childPrefix False (Exists f) >>
+        pprintExpr childPrefix True (Exists a)
     (ExprIf cond thenExpr elseExpr) ->
         putStrLn (prefix <> sign <> "IF") >>
         pprintExpr childPrefix False (Exists cond) >>
@@ -64,9 +62,7 @@ pprintExpr prefix isLast (Exists e) =
         putStrLn (childPrefix <> end <> "IN")
         pprintExpr (childPrefix <> space) True (Exists body)
     (ExprLambda param ty body) ->
-        putStrLn (prefix <> sign <> "LAMBDA") >>
-        putStrLn (childPrefix <> start <> unpack param) >>
-        putStrLn (childPrefix <> start <> show ty) >>
+        putStrLn (prefix <> sign <> "LAMBDA " <> unpack param <> " : " <> show ty) >>
         pprintExpr childPrefix True (Exists body)
 
 pprint :: Exists Expr -> IO ()

@@ -139,13 +139,13 @@ data Expr t where
   ExprTuple :: [Exists Expr] -> Expr 'TTuple
   ExprUnary :: Op input output -> Expr input -> Expr output
   ExprBinary :: Op input output -> Expr input -> Expr input -> Expr output
-  ExprApp :: Text -> [Exists Expr] -> Expr t
+  ExprApp :: Expr ('TFun a b) -> Expr a -> Expr b
   ExprIf :: Expr 'TBool -> Expr t -> Expr t -> Expr t
   ExprWhile :: Expr 'TBool -> Expr 'TUnit -> Expr 'TUnit
   ExprBlock :: [Exists Expr] -> Expr 'TUnit
   ExprUnit :: Expr 'TUnit
   ExprLet :: [(Text, Exists Expr)] -> Expr t -> Expr t
-  ExprLambda :: Text -> Exists TermT -> Expr b -> Expr ('TFun a b)  -- Single parameter lambda
+  ExprLambda :: Text -> TermT a -> Expr b -> Expr ('TFun a b)
 
 instance Show (Expr t) where
   show (ExprLit ty val) = "ExprLit (" <> show ty <> ") " <> show val
@@ -153,7 +153,7 @@ instance Show (Expr t) where
   show (ExprTuple es) = "ExprTuple " <> show es
   show (ExprUnary op e) = "ExprUnary " <> show op <> " (" <> show e <> ")"
   show (ExprBinary op e1 e2) = "ExprBinary " <> show op <> " (" <> show e1 <> ") (" <> show e2 <> ")"
-  show (ExprApp f args) = "ExprApp " <> unpack f <> " " <> show args
+  show (ExprApp f arg) = "ExprApp (" <> show f <> ") (" <> show arg <> ")"
   show (ExprIf cond thenExpr elseExpr) = "ExprIf (" <> show cond <> ") (" <> show thenExpr <> ") (" <> show elseExpr <> ")"
   show (ExprWhile cond body) = "ExprWhile (" <> show cond <> ") (" <> show body <> ")"
   show (ExprBlock es) = "ExprBlock " <> show es
