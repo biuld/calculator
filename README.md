@@ -74,7 +74,7 @@ stack run calculator-exe -- parse "(1 + 2) * 3"
 stack run calculator-exe -- parse -r "(1 + 2) * 3"
 
 # Desugar to AST
-stack run calculator-exe -- desugar "let { f = \a:Int -> \b:Int -> a + b; x = 1; y = 2 } in f x y"
+stack run calculator-exe -- desugar "let { f = \a:Int -> \b:Int -> a + b; x = 1; y = 2 } in f (x , y)"
 
 # Evaluate an expression
 stack run calculator-exe -- eval "let {x = 10; y = 20} in x + y"
