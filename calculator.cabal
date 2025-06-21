@@ -29,6 +29,8 @@ library
       Language.Calculator.AST.Printer
       Language.Calculator.AST.Types
       Language.Calculator.AST.Values
+      Language.Calculator.Common.Printer
+      Language.Calculator.Common.Types
       Language.Calculator.CST.Lexer
       Language.Calculator.CST.Parser
       Language.Calculator.CST.Printer

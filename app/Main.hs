@@ -8,7 +8,7 @@ import Language.Calculator.Desugar (desugar)
 import qualified Language.Calculator.AST.Printer as ASTPrinter
 import Language.Calculator.AST.Types (TypeExpr(..), Exists(..), Expr(..))
 import Language.Calculator.AST.Interpreter (interpret)
-import Language.Calculator.AST.Values (emptyEnv, Value)
+import Language.Calculator.AST.Values (emptyEnv)
 import System.Environment (getArgs)
 import Text.Megaparsec (errorBundlePretty)
 

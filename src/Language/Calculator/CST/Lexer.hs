@@ -9,6 +9,7 @@ import Language.Calculator.CST.Utils
 import Text.Megaparsec qualified as M
 import Text.Megaparsec.Char (alphaNumChar, char, letterChar, string)
 import Text.Megaparsec.Char.Lexer qualified as L
+import Language.Calculator.Common.Types (SourceToken (..))
 
 tokInteger :: Parser (SourceToken Integer)
 tokInteger = M.label "integer" . lexeme $ L.decimal

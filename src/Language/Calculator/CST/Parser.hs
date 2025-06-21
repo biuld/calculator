@@ -11,25 +11,47 @@ import Language.Calculator.CST.Lexer
 import Language.Calculator.CST.Types
 import Language.Calculator.CST.Utils
 import Text.Megaparsec
+import Language.Calculator.Common.Types (SourceToken (..), SourceRange (..))
+
+-- | Parses a parser `p` surrounded by `pOpen` and `pClose`,
+--   and captures the SourceToken () of the entire construct.
+withSourceRangeDelimited :: Parser () -> Parser () -> Parser a -> Parser (SourceToken (), a)
+withSourceRangeDelimited pOpen pClose pContent = do
+    startPos <- getSourcePos
+    _ <- pOpen -- Discard the result of pOpen
+    content <- pContent
+    _ <- pClose -- Discard the result of pClose
+    endPos <- getSourcePos
+    return (SourceToken (SourceRange startPos endPos) (), content)
+
+-- | A combinator that runs a parser `p` and captures its overall SourceToken ().
+--   Useful for Expr constructors that take SourceToken () as their first argument.
+--   Note: This helper is defined locally within each function that uses it because
+--   the type of 'a' varies, and the constructor function's arity also varies.
+
 
 -- A parser for parenthesized expressions, which can be a grouped expression,
 -- an empty tuple, or a tuple with one or more elements.
 pParen :: Parser Expr
-pParen = parens $ do
-    -- check for empty tuple "()"
-    maybeFollowedByCloseParen <- optional (lookAhead (tokChar ')'))
-    case maybeFollowedByCloseParen of
-      Just _ -> return $ ExprTuple []
-      Nothing -> do
-        e <- expr
-        isTuple <- optional (tokChar ',')
-        case isTuple of
-          -- Not a tuple, just a regular parenthesized expression like "(1+2)"
-          Nothing -> return e
-          -- A tuple with one or more elements, like "(a,)" or "(a,b,c)"
-          Just _  -> do
-              es <- sepEndBy expr (tokChar ',')
-              return $ ExprTuple (e:es)
+pParen = do
+    (sourceToken, result) <- parens $ do
+        -- check for empty tuple "()"
+        maybeFollowedByCloseParen <- optional (lookAhead (tokChar ')'))
+        case maybeFollowedByCloseParen of
+          Just _ -> return $ Left []
+          Nothing -> do
+            e <- expr
+            isTuple <- optional (tokChar ',')
+            case isTuple of
+              -- Not a tuple, just a regular parenthesized expression like "(1+2)"
+              Nothing -> return $ Right e
+              -- A tuple with one or more elements, like "(a,)" or "(a,b,c)"
+              Just _  -> do
+                  es <- sepEndBy expr (tokChar ',')
+                  return $ Left (e:es)
+    case result of
+      Left xs -> return $ ExprTuple sourceToken xs
+      Right e -> return e
 
 -- A more robust and maintainable expression parser using makeExprParser
 -- This handles operator precedence and associativity correctly.
@@ -53,100 +75,136 @@ term =
         , exprIdent
         ]
 
+-- Helper for Infix operators to capture SourceToken ()
+infixOpWithSource :: SourceToken Operator -> Expr -> Expr -> Expr
+infixOpWithSource opToken leftExpr rightExpr =
+    let start = (getExprRange leftExpr).srcStart
+        end = (getExprRange rightExpr).srcEnd
+        range = SourceRange start end
+    in ExprBinary (SourceToken range ()) opToken leftExpr rightExpr
+
+-- Helper for Prefix operators to capture SourceToken ()
+prefixOpWithSource :: SourceToken Operator -> Expr -> Expr
+prefixOpWithSource opToken e =
+    let start = (tokRange opToken).srcStart
+        end = (getExprRange e).srcEnd
+        range = SourceRange start end
+    in ExprUnary (SourceToken range ()) opToken e
+
 table :: [[E.Operator Parser Expr]]
 table =
-  [ [ E.InfixL (ExprBinary <$> tokOp OpAnd)
-    , E.InfixL (ExprBinary <$> tokOp OpOr)
+  [ [ E.InfixL (infixOpWithSource <$> tokOp OpAnd)
+    , E.InfixL (infixOpWithSource <$> tokOp OpOr)
     ]
-  , [ E.InfixL (ExprBinary <$> tokOp OpEqual)
-    , E.InfixL (ExprBinary <$> tokOp OpNotEqual)
+  , [ E.InfixL (infixOpWithSource <$> tokOp OpEqual)
+    , E.InfixL (infixOpWithSource <$> tokOp OpNotEqual)
     ]
-  , [ E.InfixL (ExprBinary <$> tokOp OpPlus)
-    , E.InfixL (ExprBinary <$> tokOp OpMinus)
+  , [ E.InfixL (infixOpWithSource <$> tokOp OpPlus)
+    , E.InfixL (infixOpWithSource <$> tokOp OpMinus)
     ]
-  , [ E.InfixL (ExprBinary <$> tokOp OpMultiply)
-    , E.InfixL (ExprBinary <$> tokOp OpDivide)
+  , [ E.InfixL (infixOpWithSource <$> tokOp OpMultiply)
+    , E.InfixL (infixOpWithSource <$> tokOp OpDivide)
     ]
-  , [ E.Prefix (ExprUnary <$> tokOp OpPlus)
-    , E.Prefix (ExprUnary <$> tokOp OpMinus)
-    , E.Prefix (ExprUnary <$> tokOp OpNot)
+  , [ E.Prefix (prefixOpWithSource <$> tokOp OpPlus)
+    , E.Prefix (prefixOpWithSource <$> tokOp OpMinus)
+    , E.Prefix (prefixOpWithSource <$> tokOp OpNot)
     ]
   ]
 
 exprApp :: Parser Expr
 exprApp = do
+    startPos <- getSourcePos
     ident <- tokIdent
-    ExprApp ident <$> tuple expr
+    (_, exprs) <- tuple expr
+    endPos <- getSourcePos
+    return $ ExprApp (SourceToken (SourceRange startPos endPos) ()) ident exprs
 
 exprIdent :: Parser Expr
 exprIdent = ExprIdent <$> tokIdent
 
 -- Helper for parenthesized expressions
-parens :: Parser a -> Parser a
-parens = wrapped '(' ')'
-
-wrapped :: forall a. Char -> Char -> Parser a -> Parser a
-wrapped open close m = do
-    tokChar open
-    e <- m
-    tokChar close
-    return e
+parens :: Parser a -> Parser (SourceToken (), a)
+parens = withSourceRangeDelimited (tokChar '(') (tokChar ')')
 
 -- contains zero, one, or more `m`
-separated :: forall a b. Parser b -> Char -> Char -> Parser a -> Parser [a]
-separated sep open close m = wrapped open close inner
-  where
-    inner = try rest <|> return []
+separated :: forall a. Char -> Char -> Char -> Parser a -> Parser (SourceToken (), [a])
+separated sepChar openChar closeChar m =
+    withSourceRangeDelimited (tokChar openChar) (tokChar closeChar) (sepBy m (tokChar sepChar))
 
-    rest = do
-        h <- m
-        t <- many $ sep >> m
-        return (h : t)
-
-tuple :: Parser a -> Parser [a]
-tuple = separated (tokChar ',') '(' ')'
+tuple :: Parser a -> Parser (SourceToken (), [a])
+tuple = separated ',' '(' ')'
 
 -- Parse if-else statement
 pIf :: Parser Expr
-pIf = do
+pIf = withExprSourceToken $ do
     keyword "if"
     cond <- expr
     keyword "then"
     thenExpr <- expr
     keyword "else"
     elseExpr <- expr
-    return $ ExprIf cond thenExpr elseExpr
+    return (cond, thenExpr, elseExpr)
+  where
+    -- Helper to create ExprIf with source token
+    withExprSourceToken :: Parser (Expr, Expr, Expr) -> Parser Expr
+    withExprSourceToken p = do
+        startPos <- getSourcePos
+        (cond, thenExpr, elseExpr) <- p
+        endPos <- getSourcePos
+        return $ ExprIf (SourceToken (SourceRange startPos endPos) ()) cond thenExpr elseExpr
 
 -- Parse while statement
 pWhile :: Parser Expr
-pWhile = do
+pWhile = withExprSourceToken $ do
     keyword "while"
     cond <- expr
     keyword "do"
     body <- expr
-    return $ ExprWhile cond body
+    return (cond, body)
+  where
+    -- Helper to create ExprWhile with source token
+    withExprSourceToken :: Parser (Expr, Expr) -> Parser Expr
+    withExprSourceToken p = do
+        startPos <- getSourcePos
+        (cond, body) <- p
+        endPos <- getSourcePos
+        return $ ExprWhile (SourceToken (SourceRange startPos endPos) ()) cond body
 
 -- Parse block of expressions
 pBlock :: Parser Expr
-pBlock = do
+pBlock = withExprSourceToken $ do
     tokChar '{'
     exprs <- sepEndBy expr (tokChar ';')
     tokChar '}'
-    return $ ExprBlock exprs
+    return exprs
+  where
+    -- Helper to create ExprBlock with source token
+    withExprSourceToken :: Parser [Expr] -> Parser Expr
+    withExprSourceToken p = do
+        startPos <- getSourcePos
+        exprs <- p
+        endPos <- getSourcePos
+        return $ ExprBlock (SourceToken (SourceRange startPos endPos) ()) exprs
 
 -- Parse let expression
 pLet :: Parser Expr
-pLet = do
+pLet = withExprSourceToken $ do
     keyword "let"
     bindings <- try parseMultipleBindings <|> parseSingleBinding
     keyword "in"
     body <- expr
-    return $ ExprLet bindings body
+    return (bindings, body)
+  where
+    -- Helper to create ExprLet with source token
+    withExprSourceToken :: Parser ([(SourceToken Ident, Expr)], Expr) -> Parser Expr
+    withExprSourceToken p = do
+        startPos <- getSourcePos
+        (bindings, body) <- p
+        endPos <- getSourcePos
+        return $ ExprLet (SourceToken (SourceRange startPos endPos) ()) bindings body
 
 parseSingleBinding :: Parser [(SourceToken Ident, Expr)]
-parseSingleBinding = do
-    binding <- parseBinding
-    return [binding]
+parseSingleBinding = (:[]) <$> parseBinding
 
 parseMultipleBindings :: Parser [(SourceToken Ident, Expr)]
 parseMultipleBindings = do
@@ -164,23 +222,21 @@ parseBinding = do
 
 -- Parse lambda expression
 pLambda :: Parser Expr
-pLambda = try parseMultiParamLambda <|> parseSingleParamLambda
+pLambda = withExprSourceToken $ do
+    _ <- tokChar '\\'
+    params <- some parseParam
+    _ <- tokChar '-'
+    _ <- tokChar '>'
+    body <- expr
+    return (params, body)
   where
-    parseMultiParamLambda = do
-        tokChar '\\'
-        params <- many parseParam
-        tokChar '-'
-        tokChar '>'
-        body <- expr
-        return $ ExprLambda params body
-
-    parseSingleParamLambda = do
-        tokChar '\\'
-        param <- parseParam
-        tokChar '-'
-        tokChar '>'
-        body <- expr
-        return $ ExprLambda [param] body
+    -- Helper to create ExprLambda with source token
+    withExprSourceToken :: Parser ([(SourceToken Ident, Expr)], Expr) -> Parser Expr
+    withExprSourceToken p = do
+        startPos <- getSourcePos
+        (params, body) <- p
+        endPos <- getSourcePos
+        return $ ExprLambda (SourceToken (SourceRange startPos endPos) ()) params body
 
     parseParam = do
         start <- getSourcePos
@@ -189,7 +245,7 @@ pLambda = try parseMultiParamLambda <|> parseSingleParamLambda
             tokChar ':'
             ExprIdent <$> tokIdent
         end <- getSourcePos
-        return (param, maybe (ExprIdent (SourceToken (SourceRange start end) "Any")) id ty)
+        return (param, maybe (ExprIdent (SourceToken (SourceRange start end) ("Any" :: Text))) id ty)
 
 parseExpr :: Text -> Either (ParseErrorBundle Text Void) Expr
 parseExpr = run expr 

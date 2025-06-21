@@ -6,7 +6,6 @@ import qualified Language.Calculator.AST.Types as AST
 import Language.Calculator.Desugar (desugar)
 import Data.Text (pack)
 import qualified Data.Map as Map
-import Debug.Trace (trace)
 
 spec :: Spec
 spec = do
@@ -18,60 +17,72 @@ spec = do
                 Right cst -> do
                     case desugar Map.empty cst of
                         Left err -> expectationFailure $ "Desugar failed: " ++ show err
-                        Right (AST.TypeExpr _ ast) -> do
-                            -- Verify this is a let expression
+                        Right (AST.TypeExpr _ ast) -> do -- Added _ for SourceToken ()
+                            -- Verify that the AST is correct after desugaring
                             case ast of
-                                AST.ExprLet bindings body -> do
-                                    -- Verify there is one binding named 'f'
+                                AST.ExprLet _ bindings body -> do -- Added _ for SourceToken ()
                                     length bindings `shouldBe` 1
                                     let (name, value) = head bindings
                                     name `shouldBe` "f"
-                                    
-                                    -- Verify the value is a lambda expression
                                     case value of
-                                        AST.Exists (AST.ExprLambda param ty body) -> do
-                                            -- Verify parameter name and type
+                                        AST.Exists (AST.ExprLambda _ param ty lambdaBody) -> do -- Unwrap Exists, and match 4 arguments
                                             param `shouldBe` "a"
                                             case ty of
-                                                AST.Exists AST.SInt -> return ()
-                                                _ -> expectationFailure "First parameter should have type Int"
-                                            
-                                            -- Verify the body is another lambda
-                                            case body of
-                                                AST.ExprLambda param2 ty2 body2 -> do
-                                                    -- Verify second parameter name and type
+                                                AST.SInt -> return ()
+                                                _ -> expectationFailure "Param type should be Int"
+                                            case lambdaBody of
+                                                AST.ExprLambda _ param2 ty2 lambdaBody2 -> do
                                                     param2 `shouldBe` "b"
                                                     case ty2 of
-                                                        AST.Exists AST.SInt -> return ()
-                                                        _ -> expectationFailure "Second parameter should have type Int"
-                                                    
-                                                    -- Verify the body is a binary addition
-                                                    case body2 of
-                                                        AST.ExprBinary AST.AddInt e1 e2 -> do
-                                                            -- Verify first operand is 'a'
+                                                        AST.SInt -> return ()
+                                                        _ -> expectationFailure "Param type should be Int"
+                                                    case lambdaBody2 of
+                                                        AST.ExprBinary _ AST.AddInt e1 e2 -> do
                                                             case e1 of
-                                                                AST.ExprIdent "a" -> return ()
+                                                                AST.ExprIdent _ "a" -> return ()
                                                                 _ -> expectationFailure "First operand should be 'a'"
-                                                            -- Verify second operand is 'b'
                                                             case e2 of
-                                                                AST.ExprIdent "b" -> return ()
+                                                                AST.ExprIdent _ "b" -> return ()
                                                                 _ -> expectationFailure "Second operand should be 'b'"
-                                                        _ -> expectationFailure "Body should be an addition expression"
-                                                _ -> expectationFailure "Value should be a nested lambda expression"
+                                                        _ -> expectationFailure "Body should be a binary addition"
+                                                _ -> expectationFailure "Body should be a nested lambda expression"
                                         _ -> expectationFailure "Value should be a lambda expression"
-                                    
-                                    -- Verify the body is a function application
                                     case body of
-                                        AST.ExprApp "f" args -> do
-                                            -- Verify there are two arguments
-                                            length args `shouldBe` 2
-                                            -- Verify first argument is 1
-                                            case head args of
-                                                AST.Exists (AST.ExprLit AST.SInt 1) -> return ()
-                                                _ -> expectationFailure "First argument should be 1"
-                                            -- Verify second argument is 2
-                                            case args !! 1 of
-                                                AST.Exists (AST.ExprLit AST.SInt 2) -> return ()
-                                                o@_ -> trace (show o) $ expectationFailure "Second argument should be 2"
+                                        AST.ExprApp _ func arg -> do
+                                            case func of
+                                                AST.ExprApp _ func2 arg2 -> do
+                                                    case func2 of
+                                                        AST.ExprIdent _ "f" -> return ()
+                                                        _ -> expectationFailure "Function name should be 'f'"
+                                                    case arg2 of
+                                                        AST.ExprLit _ AST.SInt 1 -> return ()
+                                                        _ -> expectationFailure "First argument should be 1"
+                                                _ -> expectationFailure "Function should be an application"
+                                            case arg of
+                                                AST.ExprLit _ AST.SInt 2 -> return ()
+                                                _ -> expectationFailure "Second argument should be 2"
                                         _ -> expectationFailure "Body should be a function application"
-                                _ -> expectationFailure "Should be a let expression" 
+                                _ -> expectationFailure "Should be a let expression"
+
+        it "should desugar lambda expression with multiple parameters and implicit Any type" $ do
+            let input = "\\a:Int b:Int -> a + b"
+            case Parser.parseExpr (pack input) of
+                Left err -> expectationFailure $ "Parse failed: " ++ show err
+                Right cstExpr -> do
+                    case desugar Map.empty cstExpr of
+                        Left err -> expectationFailure $ "Desugar failed: " ++ show err
+                        Right (AST.TypeExpr _ desugaredAst) -> do
+                            case desugaredAst of
+                                AST.ExprLambda _ param1 ty1 (AST.ExprLambda _ param2 ty2 body) -> do
+                                    param1 `shouldBe` "a"
+                                    case ty1 of
+                                        AST.SInt -> return ()
+                                        _ -> expectationFailure "First param type should be Int"
+                                    param2 `shouldBe` "b"
+                                    case ty2 of
+                                        AST.SInt -> return ()
+                                        _ -> expectationFailure "Second param type should be Int"
+                                    case body of
+                                        AST.ExprBinary _ _ (AST.ExprIdent _ "a") (AST.ExprIdent _ "b") -> return () -- Added _ for Op
+                                        _ -> expectationFailure "Body should be a binary expression"
+                                _ -> expectationFailure "Should be a nested lambda expression" 

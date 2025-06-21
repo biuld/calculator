@@ -9,13 +9,15 @@ module Language.Calculator.AST.Types (
     Op(..),
     TypeExpr(..),
     TypeEnv,
-    T(..)
+    T(..),
+    getExprRange
 ) where
 
 import Data.Text
 import qualified Data.Map as Map
 import Data.Type.Equality
 import Data.Kind (Type)
+import Language.Calculator.Common.Types (SourceToken(..), SourceRange(..))
 
 -- Basic type definitions
 data T
@@ -73,13 +75,13 @@ instance Eq (Exists TermT) where
 
 -- Type error definitions
 data TypeError where
-  UnboundVariable :: Text -> TypeError
-  TypeMismatch :: Exists TermT -> Exists TermT -> TypeError
-  OpMismatch :: Text -> Exists TermT -> TypeError
-  ArgNumMismatch :: Int -> Int -> TypeError
-  NotAFunction :: Text -> TypeError
-  TypeInferenceFailed :: Text -> TypeError
-  OtherError :: String -> TypeError
+  UnboundVariable :: SourceRange -> Text -> TypeError
+  TypeMismatch :: SourceRange -> Exists TermT -> Exists TermT -> TypeError
+  OpMismatch :: SourceRange -> Text -> Exists TermT -> TypeError
+  ArgNumMismatch :: SourceRange -> Int -> Int -> TypeError
+  NotAFunction :: SourceRange -> Text -> TypeError
+  TypeInferenceFailed :: SourceRange -> Text -> TypeError
+  OtherError :: SourceRange -> String -> TypeError
   deriving (Show, Eq)
 
 -- Type family definition, mapping type-level T to concrete runtime types
@@ -134,32 +136,32 @@ deriving instance Show (Op input output)
 
 -- Typed expressions
 data Expr t where
-  ExprLit :: Show (RealType t) => TermT t -> RealType t -> Expr t
-  ExprIdent :: Text -> Expr t
-  ExprTuple :: [Exists Expr] -> Expr 'TTuple
-  ExprUnary :: Op input output -> Expr input -> Expr output
-  ExprBinary :: Op input output -> Expr input -> Expr input -> Expr output
-  ExprApp :: Expr ('TFun a b) -> Expr a -> Expr b
-  ExprIf :: Expr 'TBool -> Expr t -> Expr t -> Expr t
-  ExprWhile :: Expr 'TBool -> Expr 'TUnit -> Expr 'TUnit
-  ExprBlock :: [Exists Expr] -> Expr 'TUnit
+  ExprLit :: Show (RealType t) => SourceToken () -> TermT t -> RealType t -> Expr t
+  ExprIdent :: SourceToken () -> Text -> Expr t
+  ExprTuple :: SourceToken () -> [Exists Expr] -> Expr 'TTuple
+  ExprUnary :: SourceToken () -> Op input output -> Expr input -> Expr output
+  ExprBinary :: SourceToken () -> Op input output -> Expr input -> Expr input -> Expr output
+  ExprApp :: SourceToken () -> Expr ('TFun a b) -> Expr a -> Expr b
+  ExprIf :: SourceToken () -> Expr 'TBool -> Expr t -> Expr t -> Expr t
+  ExprWhile :: SourceToken () -> Expr 'TBool -> Expr 'TUnit -> Expr 'TUnit
+  ExprBlock :: SourceToken () -> [Exists Expr] -> Expr 'TUnit
   ExprUnit :: Expr 'TUnit
-  ExprLet :: [(Text, Exists Expr)] -> Expr t -> Expr t
-  ExprLambda :: Text -> TermT a -> Expr b -> Expr ('TFun a b)
+  ExprLet :: SourceToken () -> [(Text, Exists Expr)] -> Expr t -> Expr t
+  ExprLambda :: SourceToken () -> Text -> TermT a -> Expr b -> Expr ('TFun a b)
 
 instance Show (Expr t) where
-  show (ExprLit ty val) = "ExprLit (" <> show ty <> ") " <> show val
-  show (ExprIdent i) = "ExprIdent " <> unpack i
-  show (ExprTuple es) = "ExprTuple " <> show es
-  show (ExprUnary op e) = "ExprUnary " <> show op <> " (" <> show e <> ")"
-  show (ExprBinary op e1 e2) = "ExprBinary " <> show op <> " (" <> show e1 <> ") (" <> show e2 <> ")"
-  show (ExprApp f arg) = "ExprApp (" <> show f <> ") (" <> show arg <> ")"
-  show (ExprIf cond thenExpr elseExpr) = "ExprIf (" <> show cond <> ") (" <> show thenExpr <> ") (" <> show elseExpr <> ")"
-  show (ExprWhile cond body) = "ExprWhile (" <> show cond <> ") (" <> show body <> ")"
-  show (ExprBlock es) = "ExprBlock " <> show es
+  show (ExprLit _ ty val) = "ExprLit (" <> show ty <> ") " <> show val
+  show (ExprIdent _ i) = "ExprIdent " <> unpack i
+  show (ExprTuple _ es) = "ExprTuple " <> show es
+  show (ExprUnary _ op e) = "ExprUnary " <> show op <> " (" <> show e <> ")"
+  show (ExprBinary _ op e1 e2) = "ExprBinary " <> show op <> " (" <> show e1 <> ") (" <> show e2 <> ")"
+  show (ExprApp _ f arg) = "ExprApp (" <> show f <> ") (" <> show arg <> ")"
+  show (ExprIf _ cond thenExpr elseExpr) = "ExprIf (" <> show cond <> ") (" <> show thenExpr <> ") (" <> show elseExpr <> ")"
+  show (ExprWhile _ cond body) = "ExprWhile (" <> show cond <> ") (" <> show body <> ")"
+  show (ExprBlock _ es) = "ExprBlock " <> show es
   show ExprUnit = "ExprUnit"
-  show (ExprLet bindings body) = "ExprLet " <> show bindings <> " (" <> show body <> ")"
-  show (ExprLambda param ty body) = "ExprLambda " <> unpack param <> " : " <> show ty <> " -> " <> show body
+  show (ExprLet _ bindings body) = "ExprLet " <> show bindings <> " (" <> show body <> ")"
+  show (ExprLambda _ param ty body) = "ExprLambda " <> unpack param <> " : " <> show ty <> " -> " <> show body
 
 -- Type-safe value wrapper
 data TypeExpr where
@@ -169,8 +171,22 @@ instance Show TypeExpr where
   show (TypeExpr ty expr) = "TypeExpr " <> show ty <> " " <> show expr
 
 -- Type environment
-type TypeEnv = Map.Map Text TypeExpr 
+type TypeEnv = Map.Map Text TypeExpr
 
 -- Add Show instance for Exists (Expr t)
 instance Show (Exists (Expr :: T -> Type)) where
-  show (Exists e) = show e 
+  show (Exists e) = show e
+
+getExprRange :: Expr t -> SourceRange
+getExprRange (ExprLit (SourceToken r _) _ _) = r
+getExprRange (ExprIdent (SourceToken r _) _) = r
+getExprRange (ExprTuple (SourceToken r _) _) = r
+getExprRange (ExprUnary (SourceToken r _) _ _) = r
+getExprRange (ExprBinary (SourceToken r _) _ _ _) = r
+getExprRange (ExprApp (SourceToken r _) _ _) = r
+getExprRange (ExprIf (SourceToken r _) _ _ _) = r
+getExprRange (ExprWhile (SourceToken r _) _ _) = r
+getExprRange (ExprBlock (SourceToken r _) _) = r
+getExprRange ExprUnit = error "ExprUnit does not have a source range."
+getExprRange (ExprLet (SourceToken r _) _ _) = r
+getExprRange (ExprLambda (SourceToken r _) _ _ _) = r 

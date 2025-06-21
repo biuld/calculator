@@ -2,14 +2,14 @@ module Language.Calculator.CST.Types (
   Operator (..),
   Expr (..),
   Ident,
-  SourceToken (..),
-  SourceRange (..),
   keywords,
   opToText,
+  getExprRange,
 ) where
 
 import Data.Text
-import Text.Megaparsec
+-- import Text.Megaparsec -- Removed redundant import
+import Language.Calculator.Common.Types (SourceToken(..), SourceRange(..))
 
 data Operator
   = OpPlus
@@ -42,31 +42,32 @@ data Expr
   | ExprBool (SourceToken Bool)
   | ExprString (SourceToken Text)
   | ExprIdent (SourceToken Ident)
-  | ExprTuple [Expr]
-  | ExprUnary (SourceToken Operator) Expr
-  | ExprBinary (SourceToken Operator) Expr Expr
-  | ExprApp (SourceToken Ident) [Expr]
-  | ExprIf Expr Expr Expr  -- if condition thenExpr elseExpr
-  | ExprWhile Expr Expr   -- while condition body
-  | ExprBlock [Expr]      -- Block of expressions
-  | ExprLet [(SourceToken Ident, Expr)] Expr  -- let bindings in body
-  | ExprLambda [(SourceToken Ident, Expr)] Expr  -- Multi-parameter lambda: params -> body
+  | ExprTuple (SourceToken ()) [Expr]
+  | ExprUnary (SourceToken ()) (SourceToken Operator) Expr
+  | ExprBinary (SourceToken ()) (SourceToken Operator) Expr Expr
+  | ExprApp (SourceToken ()) (SourceToken Ident) [Expr]
+  | ExprIf (SourceToken ()) Expr Expr Expr
+  | ExprWhile (SourceToken ()) Expr Expr
+  | ExprBlock (SourceToken ()) [Expr]
+  | ExprLet (SourceToken ()) [(SourceToken Ident, Expr)] Expr
+  | ExprLambda (SourceToken ()) [(SourceToken Ident, Expr)] Expr
   deriving (Eq, Show)
 
-data SourceRange = SourceRange
-  { srcStart :: SourcePos
-  , srcEnd :: SourcePos
-  }
-  deriving (Eq)
-
-instance Show SourceRange where
-  show (SourceRange s e) = sourcePosPretty s <> " - " <> sourcePosPretty e
-
-data SourceToken a = SourceToken
-  { tokRange :: SourceRange
-  , tokValue :: a
-  }
-  deriving (Eq, Show)
+getExprRange :: Expr -> SourceRange
+getExprRange (ExprInt (SourceToken r _)) = r
+getExprRange (ExprDouble (SourceToken r _)) = r
+getExprRange (ExprBool (SourceToken r _)) = r
+getExprRange (ExprString (SourceToken r _)) = r
+getExprRange (ExprIdent (SourceToken r _)) = r
+getExprRange (ExprTuple (SourceToken r _) _) = r
+getExprRange (ExprUnary (SourceToken r _) _ _) = r
+getExprRange (ExprBinary (SourceToken r _) _ _ _) = r
+getExprRange (ExprApp (SourceToken r _) _ _) = r
+getExprRange (ExprIf (SourceToken r _) _ _ _) = r
+getExprRange (ExprWhile (SourceToken r _) _ _) = r
+getExprRange (ExprBlock (SourceToken r _) _) = r
+getExprRange (ExprLet (SourceToken r _) _ _) = r
+getExprRange (ExprLambda (SourceToken r _) _ _) = r
 
 keywords :: [String]
 keywords = ["if", "else", "let", "for", "while", "function"]
