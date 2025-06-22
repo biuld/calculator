@@ -28,7 +28,6 @@ A statically typed calculator language written in Haskell with a focus on type s
   - `let` bindings (single and multiple)
   - Lambda expressions with explicit type annotations
   - Partial application & multi-argument functions
-  - Hindley-Milner-style type inference during desugaring
 
 ## Getting Started
 

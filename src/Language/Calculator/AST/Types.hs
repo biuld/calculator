@@ -10,7 +10,22 @@ module Language.Calculator.AST.Types (
     TypeExpr(..),
     TypeEnv,
     T(..),
-    getExprRange
+    getExprRange,
+    ExprBase(..),
+    LitExpr(..),
+    IdentExpr(..),
+    TupleExpr(..),
+    UnaryExpr(..),
+    BinaryExpr(..),
+    AppExpr(..),
+    IfExpr(..),
+    WhileExpr(..),
+    BlockExpr(..),
+    UnitExpr(..),
+    LetExpr(..),
+    LambdaExpr(..),
+    SourceRange(..),
+    getExprType
 ) where
 
 import Data.Text
@@ -134,34 +149,124 @@ data Op (input :: T) (output :: T) where
 
 deriving instance Show (Op input output)
 
+data ExprBase (t :: T) = ExprBase
+  { exprSource :: SourceToken ()
+  , exprType   :: TermT t
+  }
+
 -- Typed expressions
 data Expr t where
-  ExprLit :: Show (RealType t) => SourceToken () -> TermT t -> RealType t -> Expr t
-  ExprIdent :: SourceToken () -> Text -> Expr t
-  ExprTuple :: SourceToken () -> [Exists Expr] -> Expr 'TTuple
-  ExprUnary :: SourceToken () -> Op input output -> Expr input -> Expr output
-  ExprBinary :: SourceToken () -> Op input output -> Expr input -> Expr input -> Expr output
-  ExprApp :: SourceToken () -> Expr ('TFun a b) -> Expr a -> Expr b
-  ExprIf :: SourceToken () -> Expr 'TBool -> Expr t -> Expr t -> Expr t
-  ExprWhile :: SourceToken () -> Expr 'TBool -> Expr 'TUnit -> Expr 'TUnit
-  ExprBlock :: SourceToken () -> [Exists Expr] -> Expr 'TUnit
-  ExprUnit :: Expr 'TUnit
-  ExprLet :: SourceToken () -> [(Text, Exists Expr)] -> Expr t -> Expr t
-  ExprLambda :: SourceToken () -> Text -> TermT a -> Expr b -> Expr ('TFun a b)
+  ExprLit :: Show (RealType t) => LitExpr t -> Expr t
+  ExprIdent :: IdentExpr t -> Expr t
+  ExprTuple :: TupleExpr 'TTuple -> Expr 'TTuple
+  ExprUnary :: UnaryExpr input output -> Expr output
+  ExprBinary :: BinaryExpr input output -> Expr output
+  ExprApp :: AppExpr a b -> Expr b
+  ExprIf :: IfExpr t -> Expr t
+  ExprWhile :: WhileExpr 'TUnit -> Expr 'TUnit
+  ExprBlock :: BlockExpr 'TUnit -> Expr 'TUnit
+  ExprUnit :: UnitExpr 'TUnit -> Expr 'TUnit
+  ExprLet :: LetExpr t -> Expr t
+  ExprLambda :: LambdaExpr a b -> Expr ('TFun a b)
+
+-- Individual expression records
+data LitExpr (t :: T) = LitExpr
+  { litBase  :: ExprBase t
+  , litValue :: RealType t
+  }
+
+data IdentExpr (t :: T) = IdentExpr
+  { identBase :: ExprBase t
+  , identName :: Text
+  }
+
+data TupleExpr (t :: T) = TupleExpr
+  { tupleBase  :: ExprBase t
+  , tupleElems :: [Exists Expr]
+  }
+
+data UnaryExpr (input :: T) (output :: T) = UnaryExpr
+  { unaryBase :: ExprBase output
+  , unaryOp   :: Op input output
+  , unaryExpr :: Expr input
+  }
+
+data BinaryExpr (input :: T) (output :: T) = BinaryExpr
+  { binaryBase :: ExprBase output
+  , binaryOp   :: Op input output
+  , binaryLeft :: Expr input
+  , binaryRight :: Expr input
+  }
+
+data AppExpr (a :: T) (b :: T) = AppExpr
+  { appBase :: ExprBase b
+  , appFun  :: Expr ('TFun a b)
+  , appArg  :: Expr a
+  }
+
+data IfExpr (t :: T) = IfExpr
+  { ifBase    :: ExprBase t
+  , ifCond    :: Expr 'TBool
+  , ifThen    :: Expr t
+  , ifElse    :: Expr t
+  }
+
+data WhileExpr (t :: T) = WhileExpr
+  { whileBase :: ExprBase t
+  , whileCond :: Expr 'TBool
+  , whileBody :: Expr t
+  }
+
+data BlockExpr (t :: T) = BlockExpr
+  { blockBase :: ExprBase t
+  , blockElems :: [Exists Expr]
+  }
+
+data UnitExpr (t :: T) = UnitExpr
+  { unitBase :: ExprBase t
+  }
+
+data LetExpr (t :: T) = LetExpr
+  { letBase    :: ExprBase t
+  , letBindings :: [(Text, Exists Expr)]
+  , letBody    :: Expr t
+  }
+
+data LambdaExpr (a :: T) (b :: T) = LambdaExpr
+  { lambdaBase  :: ExprBase ('TFun a b)
+  , lambdaParam :: Text
+  , lambdaParamType :: TermT a
+  , lambdaBody  :: Expr b
+  }
+
+-- | Get the type of an expression
+getExprType :: Exists Expr -> Exists TermT
+getExprType (Exists (ExprLit l)) = Exists (litBase l).exprType
+getExprType (Exists (ExprIdent i)) = Exists (identBase i).exprType
+getExprType (Exists (ExprTuple t)) = Exists (tupleBase t).exprType
+getExprType (Exists (ExprUnary u)) = Exists (unaryBase u).exprType
+getExprType (Exists (ExprBinary b)) = Exists (binaryBase b).exprType
+getExprType (Exists (ExprApp a)) = Exists (appBase a).exprType
+getExprType (Exists (ExprIf i)) = Exists (ifBase i).exprType
+getExprType (Exists (ExprWhile w)) = Exists (whileBase w).exprType
+getExprType (Exists (ExprBlock b)) = Exists (blockBase b).exprType
+getExprType (Exists (ExprUnit u)) = Exists (unitBase u).exprType
+getExprType (Exists (ExprLet l)) = Exists (letBase l).exprType
+getExprType (Exists (ExprLambda l)) = Exists (lambdaBase l).exprType
 
 instance Show (Expr t) where
-  show (ExprLit _ ty val) = "ExprLit (" <> show ty <> ") " <> show val
-  show (ExprIdent _ i) = "ExprIdent " <> unpack i
-  show (ExprTuple _ es) = "ExprTuple " <> show es
-  show (ExprUnary _ op e) = "ExprUnary " <> show op <> " (" <> show e <> ")"
-  show (ExprBinary _ op e1 e2) = "ExprBinary " <> show op <> " (" <> show e1 <> ") (" <> show e2 <> ")"
-  show (ExprApp _ f arg) = "ExprApp (" <> show f <> ") (" <> show arg <> ")"
-  show (ExprIf _ cond thenExpr elseExpr) = "ExprIf (" <> show cond <> ") (" <> show thenExpr <> ") (" <> show elseExpr <> ")"
-  show (ExprWhile _ cond body) = "ExprWhile (" <> show cond <> ") (" <> show body <> ")"
-  show (ExprBlock _ es) = "ExprBlock " <> show es
-  show ExprUnit = "ExprUnit"
-  show (ExprLet _ bindings body) = "ExprLet " <> show bindings <> " (" <> show body <> ")"
-  show (ExprLambda _ param ty body) = "ExprLambda " <> unpack param <> " : " <> show ty <> " -> " <> show body
+  show (ExprLit (LitExpr base val)) = "ExprLit (" <> show base.exprType <> ") " <> show val
+  show (ExprIdent (IdentExpr base i)) = "ExprIdent (" <> show base.exprType <> ") " <> unpack i
+  show (ExprTuple (TupleExpr base es)) = "ExprTuple (" <> show base.exprType <> ") " <> show es
+  show (ExprUnary (UnaryExpr base op e)) = "ExprUnary (" <> show base.exprType <> ") " <> show op <> " (" <> show e <> ")"
+  show (ExprBinary (BinaryExpr base op e1 e2)) = "ExprBinary (" <> show base.exprType <> ") " <> show op <> " (" <> show e1 <> ") (" <> show e2 <> ")"
+  show (ExprApp (AppExpr base f arg)) = "ExprApp (" <> show base.exprType <> ") (" <> show f <> ") (" <> show arg <> ")"
+  show (ExprIf (IfExpr base cond thenExpr elseExpr)) = "ExprIf (" <> show base.exprType <> ") " <> show cond <> " (" <> show thenExpr <> ") (" <> show elseExpr <> ")"
+  show (ExprWhile (WhileExpr base cond body)) = "ExprWhile (" <> show base.exprType <> ") " <> show cond <> " (" <> show body <> ")"
+  show (ExprBlock (BlockExpr base es)) = "ExprBlock (" <> show base.exprType <> ") " <> show es
+  show (ExprUnit (UnitExpr base)) = "ExprUnit (" <> show base.exprType <> ")"
+  show (ExprLet (LetExpr base bindings body)) = "ExprLet (" <> show base.exprType <> ") " <> show bindings <> " (" <> show body <> ")"
+  show (ExprLambda (LambdaExpr base param paramTy body)) = "ExprLambda (" <> show base.exprType <> ") " <> unpack param <> " : " <> show paramTy <> " -> " <> show body
 
 -- Type-safe value wrapper
 data TypeExpr where
@@ -178,15 +283,15 @@ instance Show (Exists (Expr :: T -> Type)) where
   show (Exists e) = show e
 
 getExprRange :: Expr t -> SourceRange
-getExprRange (ExprLit (SourceToken r _) _ _) = r
-getExprRange (ExprIdent (SourceToken r _) _) = r
-getExprRange (ExprTuple (SourceToken r _) _) = r
-getExprRange (ExprUnary (SourceToken r _) _ _) = r
-getExprRange (ExprBinary (SourceToken r _) _ _ _) = r
-getExprRange (ExprApp (SourceToken r _) _ _) = r
-getExprRange (ExprIf (SourceToken r _) _ _ _) = r
-getExprRange (ExprWhile (SourceToken r _) _ _) = r
-getExprRange (ExprBlock (SourceToken r _) _) = r
-getExprRange ExprUnit = error "ExprUnit does not have a source range."
-getExprRange (ExprLet (SourceToken r _) _ _) = r
-getExprRange (ExprLambda (SourceToken r _) _ _ _) = r 
+getExprRange (ExprLit (LitExpr base _)) = base.exprSource.tokRange
+getExprRange (ExprIdent (IdentExpr base _)) = base.exprSource.tokRange
+getExprRange (ExprTuple (TupleExpr base _)) = base.exprSource.tokRange
+getExprRange (ExprUnary (UnaryExpr base _ _)) = base.exprSource.tokRange
+getExprRange (ExprBinary (BinaryExpr base _ _ _)) = base.exprSource.tokRange
+getExprRange (ExprApp (AppExpr base _ _)) = base.exprSource.tokRange
+getExprRange (ExprIf (IfExpr base _ _ _)) = base.exprSource.tokRange
+getExprRange (ExprWhile (WhileExpr base _ _)) = base.exprSource.tokRange
+getExprRange (ExprBlock (BlockExpr base _)) = base.exprSource.tokRange
+getExprRange (ExprUnit (UnitExpr base)) = base.exprSource.tokRange
+getExprRange (ExprLet (LetExpr base _ _)) = base.exprSource.tokRange
+getExprRange (ExprLambda (LambdaExpr base _ _ _)) = base.exprSource.tokRange 
