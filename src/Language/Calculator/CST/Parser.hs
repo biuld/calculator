@@ -86,7 +86,7 @@ infixOpWithSource opToken leftExpr rightExpr =
 -- Helper for Prefix operators to capture SourceToken ()
 prefixOpWithSource :: SourceToken Operator -> Expr -> Expr
 prefixOpWithSource opToken e =
-    let start = (tokRange opToken).srcStart
+    let start = opToken.tokRange.srcStart
         end = (getExprRange e).srcEnd
         range = SourceRange start end
     in ExprUnary (SourceToken range ()) opToken e

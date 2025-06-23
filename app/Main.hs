@@ -9,8 +9,11 @@ import qualified Language.Calculator.AST.Printer as ASTPrinter
 import Language.Calculator.AST.Types (TypeExpr(..), Exists(..), Expr(..))
 import Language.Calculator.AST.Interpreter (interpret)
 import Language.Calculator.AST.Values (emptyEnv)
+import Language.Calculator.Wasm.Compiler (compileToWasm)
+import Language.Calculator.Wasm.Printer (printWatModule)
 import System.Environment (getArgs)
 import Text.Megaparsec (errorBundlePretty)
+import qualified Data.Text.IO as TIO
 
 -- | Handle parse command
 handleParse :: Bool -> String -> IO ()
@@ -51,6 +54,22 @@ handleEval _ expr = do
           let result = interpret emptyEnv ast
           print result
 
+-- | Handle wasm command
+handleWasm :: Bool -> String -> IO ()
+handleWasm raw expr = do
+  case parseExpr (pack expr) of
+    Left err -> putStrLn $ errorBundlePretty err
+    Right cst -> do
+      case desugar Map.empty cst of
+        Left err -> print err
+        Right (TypeExpr _ ast) -> do
+          let wasmModule = compileToWasm (Exists ast)
+          if raw
+            then print wasmModule
+            else do
+              putStrLn "WASM WAT:"
+              TIO.putStrLn $ printWatModule wasmModule
+
 -- | Print usage information
 printUsage :: IO ()
 printUsage = do
@@ -59,6 +78,7 @@ printUsage = do
   putStrLn "  parse   - Parse the expression and show CST"
   putStrLn "  desugar - Parse and desugar the expression"
   putStrLn "  eval    - Evaluate the expression"
+  putStrLn "  wasm    - Compile the expression to WASM WAT"
   putStrLn "Options:"
   putStrLn "  -r      - Show raw output using print"
 
@@ -76,4 +96,5 @@ main = do
         "parse" -> handleParse raw e
         "desugar" -> handleDesugar raw e
         "eval" -> handleEval raw e
+        "wasm" -> handleWasm raw e
         _ -> printUsage

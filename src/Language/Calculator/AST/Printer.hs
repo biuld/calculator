@@ -11,37 +11,37 @@ pprintExpr prefix isLast (Exists e) =
         then (end, prefix <> space)
         else (start, prefix <> vertical)
     in case e of
-    (ExprLit _ _ val) -> putStrLn $ prefix <> sign <> show val
-    (ExprIdent _ i) -> putStrLn $ prefix <> sign <> unpack i
-    (ExprTuple _ es) ->
+    ExprLit (LitExpr {litValue = val}) -> putStrLn $ prefix <> sign <> show val
+    ExprIdent (IdentExpr {identName = i}) -> putStrLn $ prefix <> sign <> unpack i
+    ExprTuple (TupleExpr {tupleElems = es}) ->
         putStrLn (prefix <> sign <> "()") >> go pprintExpr childPrefix es
-    (ExprUnary _ op e1) ->
+    ExprUnary (UnaryExpr {unaryOp = op, unaryExpr = e1}) ->
         putStrLn (prefix <> sign <> show op) >> pprintExpr childPrefix True (Exists e1)
-    (ExprBinary _ op e1 e2) ->
+    ExprBinary (BinaryExpr {binaryOp = op, binaryLeft = e1, binaryRight = e2}) ->
         putStrLn (prefix <> sign <> show op) >> 
         pprintExpr childPrefix False (Exists e1) >> 
         pprintExpr childPrefix True (Exists e2)
-    (ExprApp _ f a) ->
+    ExprApp (AppExpr {appFun = f, appArg = a}) ->
         putStrLn (prefix <> sign <> "APP") >>
         pprintExpr childPrefix False (Exists f) >>
         pprintExpr childPrefix True (Exists a)
-    (ExprIf _ cond thenExpr elseExpr) ->
+    ExprIf (IfExpr {ifCond = cond, ifThen = thenExpr, ifElse = elseExpr}) ->
         putStrLn (prefix <> sign <> "IF") >>
         pprintExpr childPrefix False (Exists cond) >>
         putStrLn (childPrefix <> start <> "THEN") >>
         pprintExpr (childPrefix <> vertical) True (Exists thenExpr) >>
         putStrLn (childPrefix <> end <> "ELSE") >>
         pprintExpr (childPrefix <> space) True (Exists elseExpr)
-    (ExprWhile _ cond body) ->
+    ExprWhile (WhileExpr {whileCond = cond, whileBody = body}) ->
         putStrLn (prefix <> sign <> "WHILE") >>
         pprintExpr childPrefix False (Exists cond) >>
         putStrLn (childPrefix <> end <> "DO") >>
         pprintExpr (childPrefix <> space) True (Exists body)
-    (ExprBlock _ es) ->
+    ExprBlock (BlockExpr {blockElems = es}) ->
         putStrLn (prefix <> sign <> "BLOCK") >> go pprintExpr childPrefix es
-    ExprUnit ->
+    ExprUnit (UnitExpr {}) ->
         putStrLn $ prefix <> sign <> "UNIT"
-    (ExprLet _ bindings body) -> do
+    ExprLet (LetExpr {letBindings = bindings, letBody = body}) -> do
         putStrLn (prefix <> sign <> "LET")
         let printBinding (name, value) = do
                 putStrLn (childPrefix <> start <> unpack name)
@@ -49,7 +49,7 @@ pprintExpr prefix isLast (Exists e) =
         mapM_ printBinding bindings
         putStrLn (childPrefix <> end <> "IN")
         pprintExpr (childPrefix <> space) True (Exists body)
-    (ExprLambda _ param ty body) ->
+    ExprLambda (LambdaExpr {lambdaParam = param, lambdaParamType = ty, lambdaBody = body}) ->
         putStrLn (prefix <> sign <> "LAMBDA " <> unpack param <> " : " <> show ty) >>
         pprintExpr childPrefix True (Exists body)
 

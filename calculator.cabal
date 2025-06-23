@@ -37,6 +37,10 @@ library
       Language.Calculator.CST.Types
       Language.Calculator.CST.Utils
       Language.Calculator.Desugar
+      Language.Calculator.Wasm.CompileEnv
+      Language.Calculator.Wasm.Compiler
+      Language.Calculator.Wasm.Printer
+      Language.Calculator.Wasm.Types
   other-modules:
       Paths_calculator
   hs-source-dirs:
@@ -49,6 +53,7 @@ library
       base >=4.7 && <5
     , containers
     , megaparsec
+    , mtl
     , parser-combinators
     , text
   default-language: GHC2024
@@ -68,6 +73,7 @@ executable calculator-exe
     , calculator
     , containers
     , megaparsec
+    , mtl
     , parser-combinators
     , text
   default-language: GHC2024
@@ -91,6 +97,7 @@ test-suite calculator-test
     , containers
     , hspec
     , megaparsec
+    , mtl
     , parser-combinators
     , text
   default-language: GHC2024
